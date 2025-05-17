@@ -14,9 +14,12 @@ import wandb
 from ..torch.moondream import MoondreamConfig, MoondreamModel, text_encoder
 from ..torch.text import TextConfig, _lm_head, _produce_hidden
 from ..torch.weights import load_weights_into_model
+from .evaluate_finetune import rate_answer
 
 # Your data should end with the eos token. Here is the textual representation.
 ANSWER_EOS = "<|endoftext|>"
+VERBOSE = True
+
 LR = 3e-6
 EPOCHS = 1
 GRAD_ACCUM_STEPS = 128
@@ -25,6 +28,7 @@ HF_TOKEN = os.environ["HF_TOKEN"]
 WANDB_API_KEY = os.environ["WANDB_API_KEY"]
 MD_QUESTION = os.environ["MD_QUESTION"]
 HF_DS_REPO = os.environ["HF_DS_REPO"]
+HF_DS_TARGET_COLUMN = os.environ["HF_DS_TARGET_COLUMN"]
 BASEMODEL_PATH = os.environ["BASEMODEL_PATH"]
 DEBUG = os.environ.get("DEBUG", "False").lower() in ["true", "1", "yes", "y"]
 
@@ -93,10 +97,58 @@ class CocoDataset(Dataset):
             "qa":
                 {
                     "question": f"\n\nQuestion: {MD_QUESTION}\n\nAnswer:",
-                    "answer": f"{sample['caption_a']}{ANSWER_EOS}",
+                    "answer": f"{sample[HF_DS_TARGET_COLUMN]}{ANSWER_EOS}",
             }
 
         }
+
+
+def eval(model):
+    model.compile()
+    dataset = load_dataset(HF_DS_REPO, token=HF_TOKEN, split="val")
+    correct = 0
+    total = 0
+    results = []
+
+    for row in tqdm(dataset, desc="Evaluation"):
+        image = row["image"]
+        question = MD_QUESTION
+        answer = row[HF_DS_TARGET_COLUMN]
+        model_answer = model.query(image, question)["answer"]
+        score = rate_answer(answer, model_answer)
+
+        results.append(
+            {
+                "question": question,
+                "ground_truth": answer,
+                "model_answer": model_answer,
+                "score": score,
+            }
+        )
+
+        total += 1
+        if score > 0.8:
+            correct += 1
+        elif VERBOSE:
+            print(f"Score: {score}")
+            print(f"Image: {row['id']}")
+            print(f"Question: {question}")
+            print(f"Answer: {answer}")
+            print(f"Model Answer: {model_answer}")
+        if DEBUG:
+            print(f"Correct: {correct}, Total: {total}")
+            print(f"Accuracy: {correct * 100 / total:.2f}")
+            print("---------\n\n")
+        else:
+            print("---------\n\n")
+
+    return {
+        "avg_score": sum([r["score"] for r in results]) / len(results),
+        "min_score": min([r["score"] for r in results]),
+        "max_score": max([r["score"] for r in results]),
+        "total_count": total,
+        "results": results,
+    }
 
 
 def main():
@@ -188,6 +240,7 @@ def main():
         model.state_dict(),
         f"/moondream/models/moondream_finetune_{timestamp}.safetensors",
     )
+    eval(model)
 
 
 if __name__ == "__main__":
