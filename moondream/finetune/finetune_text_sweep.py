@@ -35,28 +35,33 @@ WANDB_ENTITY = os.environ.get("WANDB_ENTITY")
 def lr_schedule(step, max_steps, base_lr, warmup_proportion, min_lr_factor):
     if max_steps == 0:
         return base_lr
-    
+
     warmup_steps = warmup_proportion * max_steps
-    
+
     if step < warmup_steps:
         if warmup_steps == 0:
-            return base_lr # Avoid division by zero if warmup_proportion is 0
+            return base_lr  # Avoid division by zero if warmup_proportion is 0
         # Linear warmup from a small fraction (e.g., 0.1 * base_lr or min_lr_factor * base_lr) to base_lr
-        warmup_start_lr = min_lr_factor * base_lr * 0.1 # Start very low
+        warmup_start_lr = min_lr_factor * base_lr * 0.1  # Start very low
         current_warmup_step = step
-        lr = warmup_start_lr + (base_lr - warmup_start_lr) * (current_warmup_step / warmup_steps)
+        lr = warmup_start_lr + (base_lr - warmup_start_lr) * \
+            (current_warmup_step / warmup_steps)
         return lr
     else:
         # Cosine decay from base_lr to min_lr_factor * base_lr
-        if (1 - warmup_proportion) * max_steps == 0: # Avoid division by zero if warmup_proportion is 1
-             return min_lr_factor * base_lr
-        progress = (step - warmup_steps) / ((1 - warmup_proportion) * max_steps)
-        progress = min(progress, 1.0) # Clamp progress to [0, 1]
-        
+        # Avoid division by zero if warmup_proportion is 1
+        if (1 - warmup_proportion) * max_steps == 0:
+            return min_lr_factor * base_lr
+        progress = (step - warmup_steps) / \
+            ((1 - warmup_proportion) * max_steps)
+        progress = min(progress, 1.0)  # Clamp progress to [0, 1]
+
         decay_initial_lr = base_lr
         decay_final_lr = min_lr_factor * base_lr
-        
-        lr = decay_final_lr + 0.5 * (decay_initial_lr - decay_final_lr) * (1 + math.cos(math.pi * progress))
+
+        lr = decay_final_lr + 0.5 * \
+            (decay_initial_lr - decay_final_lr) * \
+            (1 + math.cos(math.pi * progress))
         return lr
 
 
@@ -122,7 +127,7 @@ class CocoDataset(Dataset):
         }
 
 
-def eval(model):
+def eval_model(model):
     model.compile()
     dataset = load_dataset(HF_DS_REPO, token=HF_TOKEN, split="val")
     correct = 0
@@ -161,9 +166,11 @@ def eval(model):
         else:
             print("---------\n\n")
 
-    results_table = wandb.Table(columns=["id", "question", "ground_truth", "model_answer", "score"])
+    results_table = wandb.Table(
+        columns=["id", "question", "ground_truth", "model_answer", "score"])
     for r in results:
-        results_table.add_data(r["question"], r["ground_truth"], r["model_answer"], r["score"])
+        results_table.add_data(
+            r["question"], r["ground_truth"], r["model_answer"], r["score"])
 
     return {
         "avg_score": sum([r["score"] for r in results]) / len(results),
@@ -198,7 +205,7 @@ def main():
     run = wandb.init(
         project=WANDB_PROJECT,
         # entity=WANDB_ENTITY,
-        config=config_defaults, # wandb.config will have sweep params + defaults
+        config=config_defaults,  # wandb.config will have sweep params + defaults
     )
     cfg = wandb.config
 
@@ -258,7 +265,8 @@ def main():
                 optimizer.step()
                 optimizer.zero_grad()
 
-                lr = lr_schedule(i / cfg.GRAD_ACCUM_STEPS, total_steps, cfg.LR, cfg.WARMUP_PROPORTION, cfg.MIN_LR_FACTOR)
+                lr = lr_schedule(i / cfg.GRAD_ACCUM_STEPS, total_steps,
+                                 cfg.LR, cfg.WARMUP_PROPORTION, cfg.MIN_LR_FACTOR)
                 for param_group in optimizer.param_groups:
                     param_group["lr"] = lr
                 pbar.set_postfix(
@@ -268,13 +276,36 @@ def main():
                     {"loss/train": loss.item(),
                      "lr": optimizer.param_groups[0]["lr"]}
                 )
-    wandb.finish()
+
+    # Save the model
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    model_filename = f"moondream_finetune_{run.id}_{timestamp}.safetensors"
+    model_save_dir = "/moondream/models"
+    os.makedirs(model_save_dir, exist_ok=True)
+    model_save_path = os.path.join(model_save_dir, model_filename)
+    print(f"Saving model to {model_save_path}")
     save_file(
         model.state_dict(),
-        f"/moondream/models/moondream_finetune_{timestamp}.safetensors",
+        model_save_path,
     )
-    eval(model)
+
+    # Evaluation
+    print("Starting evaluation...")
+    model.eval()
+    with torch.no_grad():
+        eval_results = eval_model(model)
+
+    print(f"Evaluation Results: Avg Score: {eval_results['avg_score']:.4f}")
+
+    wandb.log({
+        "eval/avg_score": eval_results["avg_score"],
+        "eval/min_score": eval_results["min_score"],
+        "eval/max_score": eval_results["max_score"],
+        "eval/total_samples": eval_results["total_count"],
+        "eval/results_table": eval_results["results_table"]
+    })
+
+
 
 
 if __name__ == "__main__":
