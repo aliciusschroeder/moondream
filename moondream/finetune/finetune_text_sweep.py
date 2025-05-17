@@ -133,7 +133,7 @@ def eval_model(model):
     results = []
 
     results_table = wandb.Table(
-        columns=["id", "image", "question", "ground_truth", "model_answer", "score"])
+        columns=["id", "ground_truth", "model_answer", "score"])
 
     for row in tqdm(dataset, desc="Evaluation"):
         image = row["image"]
@@ -153,8 +153,6 @@ def eval_model(model):
 
         results_table.add_data(
             row["id"],
-            image,
-            question,
             answer,
             model_answer,
             score,
@@ -173,7 +171,7 @@ def eval_model(model):
             print(f"Correct: {correct}, Total: {total}")
             print(f"Accuracy: {correct * 100 / total:.2f}")
             print("---------\n\n")
-        else:
+        elif VERBOSE:
             print("---------\n\n")
 
         if DEBUG and total > 10:
@@ -190,6 +188,10 @@ def eval_model(model):
 
 
 def main():
+    timing = {}
+    print("Initializing...")
+    ts = datetime.datetime.now()
+
     if torch.cuda.is_available():
         torch.set_default_device("cuda")
     else:
@@ -214,6 +216,11 @@ def main():
     )
     cfg = wandb.config
 
+    timing["init"] = datetime.datetime.now() - ts
+    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    print("Loading model, optimizer & ds...")
+    ts = datetime.datetime.now()
+
     config = MoondreamConfig()
     model = MoondreamModel(config)
     load_weights_into_model(BASEMODEL_PATH, model)
@@ -229,7 +236,13 @@ def main():
 
     dataset = CocoDataset("train")
 
-    total_steps = cfg.EPOCHS * len(dataset) // cfg.GRAD_ACCUM_STEPS
+    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    timing["load"] = datetime.datetime.now() - ts
+    ts = datetime.datetime.now()
+    print("Starting training...")
+
+    processed_samples_count = len(dataset) * cfg.EPOCHS
+    total_steps = processed_samples_count // cfg.GRAD_ACCUM_STEPS
     pbar = tqdm(total=total_steps)
 
     i = 0
@@ -282,6 +295,41 @@ def main():
                      "lr": optimizer.param_groups[0]["lr"]}
                 )
 
+    pbar.close()
+    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    timing["train"] = datetime.datetime.now() - ts
+    ts = datetime.datetime.now()
+
+
+    # Evaluation
+    print("Starting evaluation...")
+    model.eval()
+    with torch.no_grad():
+        eval_results = eval_model(model)
+
+    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    timing["eval"] = datetime.datetime.now() - ts
+
+    print(f"Evaluation Results: Avg Score: {eval_results['avg_score']:.4f}")
+
+    wandb.log({
+        "eval/avg_score": eval_results["avg_score"],
+        "eval/min_score": eval_results["min_score"],
+        "eval/max_score": eval_results["max_score"],
+        "eval/total_samples": eval_results["total_count"],
+        "eval/results_table": eval_results["results_table"],
+
+        "timing/init": timing["init"].total_seconds(),
+        "timing/load": timing["load"].total_seconds(),
+        "timing/train": timing["train"].total_seconds(),
+        "timing/eval": timing["eval"].total_seconds(),
+        "timing/train_per_sample": timing["train"].total_seconds() / processed_samples_count,
+        "timing/eval_per_sample": timing["eval"].total_seconds() / eval_results["total_count"],
+        "timing/total": sum(timing.values()).total_seconds()
+    })
+
+    wandb.finish()
+
     # Save the model
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     model_filename = f"moondream_finetune_{run.id}_{timestamp}.safetensors"
@@ -293,23 +341,6 @@ def main():
         model.state_dict(),
         model_save_path,
     )
-
-    # Evaluation
-    print("Starting evaluation...")
-    model.eval()
-    with torch.no_grad():
-        eval_results = eval_model(model)
-
-    print(f"Evaluation Results: Avg Score: {eval_results['avg_score']:.4f}")
-
-    wandb.log({
-        "eval/avg_score": eval_results["avg_score"],
-        "eval/min_score": eval_results["min_score"],
-        "eval/max_score": eval_results["max_score"],
-        "eval/total_samples": eval_results["total_count"],
-        "eval/results_table": eval_results["results_table"]
-    })
-
 
 if __name__ == "__main__":
     """
