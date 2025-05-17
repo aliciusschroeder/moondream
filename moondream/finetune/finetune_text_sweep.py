@@ -18,7 +18,6 @@ from .evaluate_finetune import rate_answer
 
 # Your data should end with the eos token. Here is the textual representation.
 ANSWER_EOS = "<|endoftext|>"
-VERBOSE = True
 
 HF_TOKEN = os.environ["HF_TOKEN"]
 WANDB_API_KEY = os.environ["WANDB_API_KEY"]
@@ -27,9 +26,8 @@ HF_DS_REPO = os.environ["HF_DS_REPO"]
 HF_DS_TARGET_COLUMN = os.environ["HF_DS_TARGET_COLUMN"]
 BASEMODEL_PATH = os.environ["BASEMODEL_PATH"]
 DEBUG = os.environ.get("DEBUG", "False").lower() in ["true", "1", "yes", "y"]
-
-WANDB_PROJECT = os.environ.get("WANDB_PROJECT", "moondream-finetune-sweep")
-WANDB_ENTITY = os.environ.get("WANDB_ENTITY")
+VERBOSE = os.environ.get("VERBOSE", "False").lower() in [
+    "true", "1", "yes", "y"]
 
 
 def lr_schedule(step, max_steps, base_lr, warmup_proportion, min_lr_factor):
@@ -134,6 +132,9 @@ def eval_model(model):
     total = 0
     results = []
 
+    results_table = wandb.Table(
+        columns=["id", "image", "question", "ground_truth", "model_answer", "score"])
+
     for row in tqdm(dataset, desc="Evaluation"):
         image = row["image"]
         question = MD_QUESTION
@@ -148,6 +149,15 @@ def eval_model(model):
                 "model_answer": model_answer,
                 "score": score,
             }
+        )
+
+        results_table.add_data(
+            row["id"],
+            image,
+            question,
+            answer,
+            model_answer,
+            score,
         )
 
         total += 1
@@ -168,12 +178,6 @@ def eval_model(model):
 
         if DEBUG and total > 10:
             break
-
-    results_table = wandb.Table(
-        columns=["id", "question", "ground_truth", "model_answer", "score"])
-    for r in results:
-        results_table.add_data(
-            r["question"], r["ground_truth"], r["model_answer"], r["score"])
 
     return {
         "avg_score": sum([r["score"] for r in results]) / len(results),
@@ -206,8 +210,6 @@ def main():
 
     wandb.login(key=WANDB_API_KEY)
     run = wandb.init(
-        project=WANDB_PROJECT,
-        # entity=WANDB_ENTITY,
         config=config_defaults,  # wandb.config will have sweep params + defaults
     )
     cfg = wandb.config
@@ -309,11 +311,8 @@ def main():
     })
 
 
-
-
 if __name__ == "__main__":
     """
-    Replace paths with your appropriate paths.
-    To run: python -m moondream.finetune.finetune_text
+    To run: python -m moondream.finetune.finetune_text_sweep
     """
     main()
