@@ -102,9 +102,11 @@ class CocoDataset(Dataset):
 def main():
     if torch.cuda.is_available():
         torch.set_default_device("cuda")
-    elif torch.backends.mps.is_available():
-        torch.set_default_device("mps")
+    else:
+        print("CUDA is not available. Please check your setup.")
+        exit(1)
 
+    wandb.login(key=WANDB_API_KEY)
     wandb.init(
         project="moondream-ft",
         config={
@@ -116,7 +118,7 @@ def main():
 
     config = MoondreamConfig()
     model = MoondreamModel(config)
-    load_weights_into_model(MODEL_PATH, model)
+    load_weights_into_model(BASEMODEL_PATH, model)
 
     optimizer = AdamW8bit(
         [
@@ -127,7 +129,7 @@ def main():
         eps=1e-6,
     )
 
-    dataset = DocciDataset("train")
+    dataset = CocoDataset("train")
 
     total_steps = EPOCHS * len(dataset) // GRAD_ACCUM_STEPS
     pbar = tqdm(total=total_steps)
@@ -181,10 +183,10 @@ def main():
                      "lr": optimizer.param_groups[0]["lr"]}
                 )
     wandb.finish()
-    # Add save path: ex. home/model.safetensors
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     save_file(
         model.state_dict(),
-        "moondream_finetune.safetensors",
+        f"/moondream/models/moondream_finetune_{timestamp}.safetensors",
     )
 
 
