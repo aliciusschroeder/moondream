@@ -28,6 +28,7 @@ BASEMODEL_PATH = os.environ["BASEMODEL_PATH"]
 DEBUG = os.environ.get("DEBUG", "False").lower() in ["true", "1", "yes", "y"]
 VERBOSE = os.environ.get("VERBOSE", "False").lower() in [
     "true", "1", "yes", "y"]
+GPU_TYPE = os.environ.get("GPU_TYPE", "undefined")
 
 
 def lr_schedule(step, max_steps, base_lr, warmup_proportion, min_lr_factor):
@@ -208,6 +209,7 @@ def main():
         "ADAM_BETA2": 0.95,
         "ADAM_EPS": 1e-6,
         "WEIGHT_DECAY": 0.01,
+        "GPU_TYPE": GPU_TYPE,
     }
 
     wandb.login(key=WANDB_API_KEY)
@@ -217,7 +219,8 @@ def main():
     cfg = wandb.config
 
     timing["init"] = datetime.datetime.now() - ts
-    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    print(
+        f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
     print("Loading model, optimizer & ds...")
     ts = datetime.datetime.now()
 
@@ -236,7 +239,8 @@ def main():
 
     dataset = CocoDataset("train")
 
-    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    print(
+        f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
     timing["load"] = datetime.datetime.now() - ts
     ts = datetime.datetime.now()
     print("Starting training...")
@@ -296,10 +300,10 @@ def main():
                 )
 
     pbar.close()
-    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    print(
+        f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
     timing["train"] = datetime.datetime.now() - ts
     ts = datetime.datetime.now()
-
 
     # Evaluation
     print("Starting evaluation...")
@@ -307,7 +311,8 @@ def main():
     with torch.no_grad():
         eval_results = eval_model(model)
 
-    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    print(
+        f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
     timing["eval"] = datetime.datetime.now() - ts
 
     print(f"Evaluation Results: Avg Score: {eval_results['avg_score']:.4f}")
@@ -325,7 +330,7 @@ def main():
         "timing/eval": timing["eval"].total_seconds(),
         "timing/train_per_sample": timing["train"].total_seconds() / processed_samples_count,
         "timing/eval_per_sample": timing["eval"].total_seconds() / eval_results["total_count"],
-        "timing/total": sum(timing.values()).total_seconds()
+        "timing/total": sum(timing.values(), datetime.timedelta(0)).total_seconds()
     })
 
     wandb.finish()
@@ -341,6 +346,7 @@ def main():
         model.state_dict(),
         model_save_path,
     )
+
 
 if __name__ == "__main__":
     """
