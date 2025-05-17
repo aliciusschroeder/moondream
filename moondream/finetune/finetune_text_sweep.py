@@ -166,6 +166,9 @@ def eval_model(model):
         else:
             print("---------\n\n")
 
+        if DEBUG and total > 10:
+            break
+
     results_table = wandb.Table(
         columns=["id", "question", "ground_truth", "model_answer", "score"])
     for r in results:
