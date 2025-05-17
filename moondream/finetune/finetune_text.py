@@ -1,26 +1,32 @@
+import datetime
+import math
+import os
+
+from bitsandbytes.optim import AdamW8bit
+from datasets import load_dataset
+from safetensors.torch import save_file
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
-import math
-from safetensors.torch import save_file
-
 from tqdm import tqdm
-from datasets import load_dataset
-from bitsandbytes.optim import AdamW8bit
 import wandb
 
+from ..torch.moondream import MoondreamConfig, MoondreamModel, text_encoder
+from ..torch.text import TextConfig, _lm_head, _produce_hidden
 from ..torch.weights import load_weights_into_model
-from ..torch.moondream import MoondreamModel, MoondreamConfig, text_encoder
-from ..torch.text import _produce_hidden, _lm_head, TextConfig
 
-# This is a intended to be a basic starting point for fine-tuning the text encoder.
-# Your optimal hyperparams and data may be different.
-MODEL_PATH = ""
 # Your data should end with the eos token. Here is the textual representation.
 ANSWER_EOS = "<|endoftext|>"
 LR = 3e-6
-EPOCHS = 3
+EPOCHS = 1
 GRAD_ACCUM_STEPS = 128
+
+HF_TOKEN = os.environ["HF_TOKEN"]
+WANDB_API_KEY = os.environ["WANDB_API_KEY"]
+MD_QUESTION = os.environ["MD_QUESTION"]
+HF_DS_REPO = os.environ["HF_DS_REPO"]
+BASEMODEL_PATH = os.environ["BASEMODEL_PATH"]
+DEBUG = os.environ.get("DEBUG", "False").lower() in ["true", "1", "yes", "y"]
 
 
 def lr_schedule(step, max_steps):
