@@ -8,3 +8,4 @@ dist
 clients/python/moondream/torch
 wandb/
 moondream_finetune.safetensors
+moondream/finetune/evaluate_finetune.py
