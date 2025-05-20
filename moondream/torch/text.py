@@ -94,15 +94,32 @@ def _attn(
     return out
 
 
-def _produce_hidden(inputs_embeds: torch.Tensor, w: nn.Module, config: TextConfig):
+def _produce_hidden(
+    inputs_embeds: torch.Tensor,
+    w: nn.Module,
+    config: TextConfig,
+    attention_mask: torch.Tensor = None,
+):
+    """
+    Process inputs with attention_mask support
+    """
     hidden_BTC = inputs_embeds
 
     bsz, q_len, d_model = inputs_embeds.shape
-    attn_mask = torch.zeros(q_len, q_len)
-    attn_mask[:730, :730] = 1
-    for i in range(730, q_len):
-        attn_mask[i, : i + 1] = 1
-    attn_mask = attn_mask.to(dtype=torch.bool)
+
+    # Create causal mask with attention_mask if provided
+    if attention_mask is not None:
+        # Convert attention_mask to boolean where True = attend, False = ignore
+        attn_mask = attention_mask.to(dtype=torch.bool)
+        # Expand mask to match attention scores shape
+        attn_mask = attn_mask[:, None, None, :].expand(bsz, 1, q_len, q_len)
+    else:
+        # Original causal mask logic
+        attn_mask = torch.zeros(q_len, q_len)
+        attn_mask[:730, :730] = 1
+        for i in range(730, q_len):
+            attn_mask[i, : i + 1] = 1
+        attn_mask = attn_mask.to(dtype=torch.bool)
 
     for i, block in enumerate(w.blocks):
         l_in = layer_norm(hidden_BTC, block.ln)
