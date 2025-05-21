@@ -14,6 +14,7 @@ import wandb
 
 from moondream.finetune.dataloader import get_dataloader
 from moondream.finetune.lr_schedule import lr_schedule
+from moondream.torch.image_crops import prepare_crops, reconstruct_from_crops
 
 from ..torch.moondream import MoondreamConfig, MoondreamModel, text_encoder
 from ..torch.text import TextConfig, _lm_head, _produce_hidden
@@ -204,12 +205,44 @@ def main():
             a_attn_mask = batch["a_attn_mask"].to(model.device)
             labels = batch["labels"].to(model.device)
 
-            # Vision encoding (currently sequential)
+            # → batched vision encoding
+            # 1) collect crops for every image
+            batch_crops = [
+                prepare_crops(img, config.vision, device=model.device)
+                for img in images
+            ]
+            # each element is (crops_tensor, tiling_info)
+            # 2) cat all crops into one big [sum(N_i), …] tensor
+            all_crops = torch.cat([c for c, _ in batch_crops], dim=0)
+
+            # 3) single forward through vision encoder
+            with torch.no_grad():
+                vis_outs = model._vis_enc(all_crops)
+            # unpack same as _run_vision_encoder does:
+            global_feats = vis_outs[0]
+            local_feats = vis_outs[1:].view(
+                -1,
+                config.vision.enc_n_layers,
+                config.vision.enc_n_layers,
+                config.vision.enc_dim,
+            )
+
+            # 4) split back per image
+            counts = [crops.size(0) for crops, _ in batch_crops]
+            g_splits = torch.split(global_feats, counts, dim=0)
+            l_splits = torch.split(local_feats,  counts, dim=0)
+
+            # 5) reconstruct & project each example
             img_embs = []
-            for img in images:
-                with torch.no_grad():
-                    emb = model._run_vision_encoder(img)
-                img_embs.append(emb)
+            for (g_i, l_i), (_, tiling) in zip(zip(g_splits, l_splits), batch_crops):
+                recon = reconstruct_from_crops(
+                    l_i,
+                    tiling,
+                    patch_size=1,
+                    overlap_margin=config.vision.overlap_margin,
+                )
+                img_embs.append(model._vis_proj(g_i, recon))
+
             img_emb = torch.stack(img_embs, dim=0)  # [B, T_img, D]
 
             # Text embeddings with attention masks
