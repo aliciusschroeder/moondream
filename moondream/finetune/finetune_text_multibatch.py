@@ -52,6 +52,7 @@ class CocoDataset(Dataset):
                 "input_ids": [enc.ids for enc in encodings],
                 "attention_mask": [enc.attention_mask for enc in encodings],
             }
+
         q_enc = tokenize(questions)
         a_enc = tokenize(answers)
 
@@ -62,11 +63,16 @@ class CocoDataset(Dataset):
             "q_attn_mask": q_enc["attention_mask"],
             "a_attn_mask": a_enc["attention_mask"],
         }
-    def __init__(self, tokenizer: Optional[Tokenizer], filepath: Optional[str], split="train"):
+
+    def __init__(
+        self, tokenizer: Optional[Tokenizer], filepath: Optional[str], split="train"
+    ):
         if tokenizer is None and filepath is None:
             raise ValueError("Either tokenizer or filepath must be provided.")
         if tokenizer is None:
-            raise NotImplementedError("Tokenizer loading from file is not implemented yet.")
+            raise NotImplementedError(
+                "Tokenizer loading from file is not implemented yet."
+            )
         else:
             ds = load_dataset(HF_DS_REPO, token=HF_TOKEN)[split]
             if DEBUG:
@@ -77,13 +83,16 @@ class CocoDataset(Dataset):
                 self._tokenize_dataset,
                 batched=True,
                 desc="Tokenizing dataset",
-                remove_columns=ds.column_names
+                remove_columns=ds.column_names,
             )
+
     def __len__(self):
         return len(self.data)
+
     def __getitem__(self, idx):
         sample = self.data[idx]
         return sample
+
 
 def text_loss(
     inputs_embeds: torch.Tensor,
@@ -134,6 +143,7 @@ def text_loss(
         )
     return loss
 
+
 def main():
     if not torch.cuda.is_available():
         print("CUDA is not available. Please check your setup.")
@@ -166,8 +176,6 @@ def main():
         betas=(0.9, 0.95),
         eps=1e-6,
     )
-
-
 
     dataset = CocoDataset(tokenizer=model.tokenizer, split="train")
     dataloader = get_dataloader(
@@ -205,9 +213,7 @@ def main():
             img_emb = torch.stack(img_embs, dim=0)  # [B, T_img, D]
 
             # Text embeddings with attention masks
-            bos_token = torch.tensor(
-                [[bos_token_id]] * BATCH_SIZE, device=model.device
-            )
+            bos_token = torch.tensor([[bos_token_id]] * BATCH_SIZE, device=model.device)
             bos_emb = text_encoder(
                 bos_token, model.text, attention_mask=None
             )  # No mask needed
@@ -264,7 +270,7 @@ def main():
                 if USE_WANDB:
                     wandb.log({"loss/train": loss.item() * GRAD_ACCUM_STEPS, "lr": lr})
 
-    if USE_WANDB:    
+    if USE_WANDB:
         wandb.finish()
 
     print(eval_model(model))

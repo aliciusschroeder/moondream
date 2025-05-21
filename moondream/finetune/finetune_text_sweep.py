@@ -26,8 +26,7 @@ HF_DS_REPO = os.environ["HF_DS_REPO"]
 HF_DS_TARGET_COLUMN = os.environ["HF_DS_TARGET_COLUMN"]
 BASEMODEL_PATH = os.environ["BASEMODEL_PATH"]
 DEBUG = os.environ.get("DEBUG", "False").lower() in ["true", "1", "yes", "y"]
-VERBOSE = os.environ.get("VERBOSE", "False").lower() in [
-    "true", "1", "yes", "y"]
+VERBOSE = os.environ.get("VERBOSE", "False").lower() in ["true", "1", "yes", "y"]
 GPU_TYPE = os.environ.get("GPU_TYPE", "undefined")
 
 
@@ -43,24 +42,24 @@ def lr_schedule(step, max_steps, base_lr, warmup_proportion, min_lr_factor):
         # Linear warmup from a small fraction (e.g., 0.1 * base_lr or min_lr_factor * base_lr) to base_lr
         warmup_start_lr = min_lr_factor * base_lr * 0.1  # Start very low
         current_warmup_step = step
-        lr = warmup_start_lr + (base_lr - warmup_start_lr) * \
-            (current_warmup_step / warmup_steps)
+        lr = warmup_start_lr + (base_lr - warmup_start_lr) * (
+            current_warmup_step / warmup_steps
+        )
         return lr
     else:
         # Cosine decay from base_lr to min_lr_factor * base_lr
         # Avoid division by zero if warmup_proportion is 1
         if (1 - warmup_proportion) * max_steps == 0:
             return min_lr_factor * base_lr
-        progress = (step - warmup_steps) / \
-            ((1 - warmup_proportion) * max_steps)
+        progress = (step - warmup_steps) / ((1 - warmup_proportion) * max_steps)
         progress = min(progress, 1.0)  # Clamp progress to [0, 1]
 
         decay_initial_lr = base_lr
         decay_final_lr = min_lr_factor * base_lr
 
-        lr = decay_final_lr + 0.5 * \
-            (decay_initial_lr - decay_final_lr) * \
-            (1 + math.cos(math.pi * progress))
+        lr = decay_final_lr + 0.5 * (decay_initial_lr - decay_final_lr) * (
+            1 + math.cos(math.pi * progress)
+        )
         return lr
 
 
@@ -104,9 +103,8 @@ class DocciDataset(Dataset):
 
 
 class CocoDataset(Dataset):
-    def __init__(self, split='train'):
-        self.data = load_dataset(
-            HF_DS_REPO, token=HF_TOKEN)[split]
+    def __init__(self, split="train"):
+        self.data = load_dataset(HF_DS_REPO, token=HF_TOKEN)[split]
         if DEBUG:
             self.data = self.data.select(range(min(257, len(self.data))))
 
@@ -117,12 +115,10 @@ class CocoDataset(Dataset):
         sample = self.data[idx]
         return {
             "image": sample["image"],  # Should be a PIL image
-            "qa":
-                {
-                    "question": f"\n\nQuestion: {MD_QUESTION}\n\nAnswer:",
-                    "answer": f"{sample[HF_DS_TARGET_COLUMN]}{ANSWER_EOS}",
-            }
-
+            "qa": {
+                "question": f"\n\nQuestion: {MD_QUESTION}\n\nAnswer:",
+                "answer": f"{sample[HF_DS_TARGET_COLUMN]}{ANSWER_EOS}",
+            },
         }
 
 
@@ -133,8 +129,7 @@ def eval_model(model):
     total = 0
     results = []
 
-    results_table = wandb.Table(
-        columns=["id", "ground_truth", "model_answer", "score"])
+    results_table = wandb.Table(columns=["id", "ground_truth", "model_answer", "score"])
 
     for row in tqdm(dataset, desc="Evaluation"):
         image = row["image"]
@@ -219,8 +214,7 @@ def main():
     cfg = wandb.config
 
     timing["init"] = datetime.datetime.now() - ts
-    print(
-        f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
     print("Loading model, optimizer & ds...")
     ts = datetime.datetime.now()
 
@@ -239,8 +233,7 @@ def main():
 
     dataset = CocoDataset("train")
 
-    print(
-        f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
     timing["load"] = datetime.datetime.now() - ts
     ts = datetime.datetime.now()
     print("Starting training...")
@@ -256,12 +249,10 @@ def main():
             with torch.no_grad():
                 img_emb = model._run_vision_encoder(sample["image"])
             bos_emb = text_encoder(
-                torch.tensor([[model.config.tokenizer.bos_id]],
-                             device=model.device),
+                torch.tensor([[model.config.tokenizer.bos_id]], device=model.device),
                 model.text,
             )
-            question_tokens = model.tokenizer.encode(
-                sample["qa"]["question"]).ids
+            question_tokens = model.tokenizer.encode(sample["qa"]["question"]).ids
             question_emb = text_encoder(
                 torch.tensor([[question_tokens]], device=model.device),
                 model.text,
@@ -287,21 +278,25 @@ def main():
                 optimizer.step()
                 optimizer.zero_grad()
 
-                lr = lr_schedule(i / cfg.GRAD_ACCUM_STEPS, total_steps,
-                                 cfg.LR, cfg.WARMUP_PROPORTION, cfg.MIN_LR_FACTOR)
+                lr = lr_schedule(
+                    i / cfg.GRAD_ACCUM_STEPS,
+                    total_steps,
+                    cfg.LR,
+                    cfg.WARMUP_PROPORTION,
+                    cfg.MIN_LR_FACTOR,
+                )
                 for param_group in optimizer.param_groups:
                     param_group["lr"] = lr
                 pbar.set_postfix(
-                    {"step": i // cfg.GRAD_ACCUM_STEPS, "loss": loss.item()})
+                    {"step": i // cfg.GRAD_ACCUM_STEPS, "loss": loss.item()}
+                )
                 pbar.update(1)
                 wandb.log(
-                    {"loss/train": loss.item(),
-                     "lr": optimizer.param_groups[0]["lr"]}
+                    {"loss/train": loss.item(), "lr": optimizer.param_groups[0]["lr"]}
                 )
 
     pbar.close()
-    print(
-        f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
     timing["train"] = datetime.datetime.now() - ts
     ts = datetime.datetime.now()
 
@@ -311,27 +306,29 @@ def main():
     with torch.no_grad():
         eval_results = eval_model(model)
 
-    print(
-        f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
+    print(f"Done after {(datetime.datetime.now() - ts).total_seconds():.0f} seconds")
     timing["eval"] = datetime.datetime.now() - ts
 
     print(f"Evaluation Results: Avg Score: {eval_results['avg_score']:.4f}")
 
-    wandb.log({
-        "eval/avg_score": eval_results["avg_score"],
-        "eval/min_score": eval_results["min_score"],
-        "eval/max_score": eval_results["max_score"],
-        "eval/total_samples": eval_results["total_count"],
-        "eval/results_table": eval_results["results_table"],
-
-        "timing/init": timing["init"].total_seconds(),
-        "timing/load": timing["load"].total_seconds(),
-        "timing/train": timing["train"].total_seconds(),
-        "timing/eval": timing["eval"].total_seconds(),
-        "timing/train_per_sample": timing["train"].total_seconds() / processed_samples_count,
-        "timing/eval_per_sample": timing["eval"].total_seconds() / eval_results["total_count"],
-        "timing/total": sum(timing.values(), datetime.timedelta(0)).total_seconds()
-    })
+    wandb.log(
+        {
+            "eval/avg_score": eval_results["avg_score"],
+            "eval/min_score": eval_results["min_score"],
+            "eval/max_score": eval_results["max_score"],
+            "eval/total_samples": eval_results["total_count"],
+            "eval/results_table": eval_results["results_table"],
+            "timing/init": timing["init"].total_seconds(),
+            "timing/load": timing["load"].total_seconds(),
+            "timing/train": timing["train"].total_seconds(),
+            "timing/eval": timing["eval"].total_seconds(),
+            "timing/train_per_sample": timing["train"].total_seconds()
+            / processed_samples_count,
+            "timing/eval_per_sample": timing["eval"].total_seconds()
+            / eval_results["total_count"],
+            "timing/total": sum(timing.values(), datetime.timedelta(0)).total_seconds(),
+        }
+    )
 
     wandb.finish()
 
