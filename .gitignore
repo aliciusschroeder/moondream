@@ -1,6 +1,7 @@
 .venv
 __pycache__
 checkpoints
+models
 data
 /pyproject.toml
 poetry.lock
