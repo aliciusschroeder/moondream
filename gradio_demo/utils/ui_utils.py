@@ -1,5 +1,6 @@
 import os
 
+
 def create_model_choices(model_paths: list[str]) -> list[tuple[str, str]]:
     """
     Create a list of tuples for model choices in the Gradio interface.

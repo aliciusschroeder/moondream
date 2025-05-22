@@ -54,20 +54,17 @@ def handle_model_selection_change(selected_model_path: str):
 
 
 def generate_question_suggestions(
-    model_path_selected, 
-    image, 
-    last_processed_image, 
-    current_tab
+    model_path_selected, image, last_processed_image, current_tab
 ):
     """
     Generate question suggestions for the current image.
-    
+
     Args:
         model_path_selected (str): Path to the selected model
         image (PIL.Image): The current image
         last_processed_image (str): Hash of the last processed image
         current_tab (str): The current tab ID
-    
+
     Returns:
         tuple: Updated UI elements and state
     """
@@ -75,37 +72,37 @@ def generate_question_suggestions(
     # Check if we need to generate new suggestions
     if current_tab != "query_tab" or image is None:
         return (
-            gr.update(), 
-            gr.update(visible=False), 
-            gr.update(visible=False), 
+            gr.update(),
+            gr.update(visible=False),
+            gr.update(visible=False),
             gr.update(visible=False),
             None,
-            last_processed_image
+            last_processed_image,
         )
-    
+
     # Get hash of current image
     current_hash = get_image_hash(image)
-    
+
     # Check if image changed or first time
     if current_hash == last_processed_image:
         # Image hasn't changed, keep existing suggestions
         return (
-            gr.update(), 
-            gr.update(), 
-            gr.update(), 
+            gr.update(),
+            gr.update(),
+            gr.update(),
             gr.update(),
             None,
-            last_processed_image
+            last_processed_image,
         )
-    
+
     # Image changed or first time, generate new suggestions
     try:
         # Show loading status
         status_msg = "*Generating question suggestions...*"
-        
+
         # Get suggestions from model
         suggestions = get_question_suggestions(model_path_selected, image)
-        
+
         # Update buttons with suggestions
         return (
             gr.update(value="", visible=False),  # Hide status
@@ -113,7 +110,7 @@ def generate_question_suggestions(
             gr.update(value=suggestions[1], visible=True),
             gr.update(value=suggestions[2], visible=True),
             None,  # No need to update question textbox yet
-            current_hash  # Update processed image hash
+            current_hash,  # Update processed image hash
         )
     except gr.Error as e:
         # Error occurred, show message and hide buttons
@@ -123,7 +120,7 @@ def generate_question_suggestions(
             gr.update(visible=False),
             gr.update(visible=False),
             None,
-            last_processed_image  # Keep old hash
+            last_processed_image,  # Keep old hash
         )
     except Exception as e:
         # Unexpected error, show message and hide buttons
@@ -134,17 +131,17 @@ def generate_question_suggestions(
             gr.update(visible=False),
             gr.update(visible=False),
             None,
-            last_processed_image  # Keep old hash
+            last_processed_image,  # Keep old hash
         )
 
 
 def handle_suggestion_click(suggestion_text):
     """
     Handle when a suggestion button is clicked.
-    
+
     Args:
         suggestion_text (str): The text from the clicked suggestion button
-    
+
     Returns:
         str: The suggestion text to fill the query input
     """
@@ -210,16 +207,37 @@ def process_query_submission(
             temperature_val,
             top_p_val,
         )
-        return pil_image, task_name, question_text, answer, image_col_update, text_col_update
+        return (
+            pil_image,
+            task_name,
+            question_text,
+            answer,
+            image_col_update,
+            text_col_update,
+        )
 
     except gr.Error as ge:
         # Gradio will display this error automatically.
         # We still return values to update the result fields appropriately, showing the error message.
         print(f"Gradio Error caught in process_query_submission: {ge}")
-        return pil_image, task_name, question_text, f"Operation Failed: {str(ge)}", image_col_update, text_col_update
+        return (
+            pil_image,
+            task_name,
+            question_text,
+            f"Operation Failed: {str(ge)}",
+            image_col_update,
+            text_col_update,
+        )
     except Exception as e:
         # Catch any other unexpected errors in this wrapper that weren't converted to gr.Error
         error_msg = f"An unexpected error occurred during query processing: {str(e)}"
         print(f"ERROR: {error_msg}")
         # Optionally, re-raise as gr.Error or return error message
-        return pil_image, task_name, question_text, error_msg, image_col_update, text_col_update
+        return (
+            pil_image,
+            task_name,
+            question_text,
+            error_msg,
+            image_col_update,
+            text_col_update,
+        )

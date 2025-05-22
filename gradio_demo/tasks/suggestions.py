@@ -6,7 +6,6 @@ from PIL import Image
 
 
 import json
-import re
 
 
 def get_question_suggestions(model_path_selected: str, pil_image: Image.Image):
@@ -25,9 +24,7 @@ def get_question_suggestions(model_path_selected: str, pil_image: Image.Image):
     """
     # Input validation
     if not model_path_selected:
-        raise gr.Error(
-            "No model selected. Please choose a model from Settings."
-        )
+        raise gr.Error("No model selected. Please choose a model from Settings.")
     if pil_image is None:
         raise gr.Error("No image provided. Please upload an image.")
 
@@ -40,7 +37,9 @@ def get_question_suggestions(model_path_selected: str, pil_image: Image.Image):
             )
 
         print("Generating question suggestions for image...")
-        suggestion_query = "Return a json list of 3 questions about this image's content"
+        suggestion_query = (
+            "Return a json list of 3 questions about this image's content"
+        )
 
         text_sampling_settings = {
             "max_tokens": 150,
@@ -71,14 +70,15 @@ def get_question_suggestions(model_path_selected: str, pil_image: Image.Image):
                     defaults = [
                         "What's in this image?",
                         "Describe this scene in detail.",
-                        "What objects do you see in the image?"
+                        "What objects do you see in the image?",
                     ]
-                    questions.extend(defaults[len(questions):3])
+                    questions.extend(defaults[len(questions) : 3])
                 return questions
         except json.JSONDecodeError:
             # If JSON parsing fails, try to extract questions from text
             print("Failed to parse JSON response, trying text extraction")
             import re
+
             questions = re.findall(r'["\'](.*?)["\']', answer)
             if questions and len(questions) >= 3:
                 return questions[:3]
@@ -87,12 +87,14 @@ def get_question_suggestions(model_path_selected: str, pil_image: Image.Image):
         return [
             "What's in this image?",
             "Describe this scene in detail.",
-            "What objects do you see in the image?"
+            "What objects do you see in the image?",
         ]
 
     except gr.Error:  # Re-raise gr.Error exceptions
         raise
     except Exception as e:
-        error_message = f"An error occurred while generating question suggestions: {str(e)}"
+        error_message = (
+            f"An error occurred while generating question suggestions: {str(e)}"
+        )
         print(f"ERROR: {error_message}")
         raise gr.Error(error_message)

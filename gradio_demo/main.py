@@ -2,8 +2,6 @@
 Entry point. Starts the Gradio app. Handles __main__ block and demo.launch(...).
 """
 
-import os
-
 # Import core modules
 from .core.config import MODEL_DIR, DEBUG_MODE, get_config_dict
 from .core.model_loader import get_model_files_from_directory, initialize_model

@@ -26,10 +26,10 @@ def create_gradio_ui(model_files_list, initial_model_status):
         gr.Blocks: The configured Gradio interface
     """
     from .events import (
-        handle_model_selection_change, 
+        handle_model_selection_change,
         process_query_submission,
         generate_question_suggestions,
-        handle_suggestion_click
+        handle_suggestion_click,
     )
     from ..tasks import placeholder_task_handler
 
@@ -55,36 +55,31 @@ def create_gradio_ui(model_files_list, initial_model_status):
                 with gr.Tabs() as tabs:
                     with gr.TabItem("❓ Query", id="query_tab") as query_tab:
                         question_textbox_query = gr.Textbox(
-                            label="Query", 
+                            label="Query",
                             placeholder="Enter a visual query, e.g. What is in this image? Describe the scene.",
                             value="Describe the image.",
                             lines=3,
                         )
-                        
+
                         # Add suggestion buttons row
                         with gr.Row() as suggestion_row:
-                            suggestion_status = gr.Markdown("*Upload an image to get question suggestions*", visible=True)
-                        
+                            suggestion_status = gr.Markdown(
+                                "*Upload an image to get question suggestions*",
+                                visible=True,
+                            )
+
                         with gr.Row() as question_buttons_row:
                             query_suggestion_btn1 = gr.Button(
-                                "Suggestion 1", 
-                                variant="secondary", 
-                                visible=False
+                                "Suggestion 1", variant="secondary", visible=False
                             )
                             query_suggestion_btn2 = gr.Button(
-                                "Suggestion 2", 
-                                variant="secondary", 
-                                visible=False
+                                "Suggestion 2", variant="secondary", visible=False
                             )
                             query_suggestion_btn3 = gr.Button(
-                                "Suggestion 3", 
-                                variant="secondary", 
-                                visible=False
+                                "Suggestion 3", variant="secondary", visible=False
                             )
-                            
-                        submit_button_query = gr.Button(
-                            "SUBMIT", variant="primary"
-                        )
+
+                        submit_button_query = gr.Button("SUBMIT", variant="primary")
 
                     with gr.TabItem("📝 Caption", id="caption_tab") as caption_tab:
                         gr.Markdown(
@@ -93,17 +88,15 @@ def create_gradio_ui(model_files_list, initial_model_status):
                         caption_length_selector = gr.Dropdown(
                             label="Caption Length",
                             choices=[
-                                ("Short", "short"), 
+                                ("Short", "short"),
                                 ("Medium", "normal"),
                                 ("Long", "long"),
-                                ],
+                            ],
                             value="normal",
                             interactive=True,
                             info="Select the desired length of the caption.",
                         )
-                        submit_button_caption = gr.Button(
-                            "SUBMIT", variant="primary"
-                        )
+                        submit_button_caption = gr.Button("SUBMIT", variant="primary")
                         gr.Markdown("*Caption functionality is under development.*")
 
                     with gr.TabItem("📍 Point", id="point_tab") as point_tab:
@@ -113,9 +106,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
                         object_textbox_point = gr.Textbox(
                             label="Object to Point At", placeholder="e.g., the red car"
                         )
-                        submit_button_point = gr.Button(
-                            "SUBMIT", variant="primary"
-                        )
+                        submit_button_point = gr.Button("SUBMIT", variant="primary")
                         gr.Markdown("*Point functionality is under development.*")
 
                     with gr.TabItem("👁️ Detect", id="detect_tab") as detect_tab:
@@ -125,14 +116,11 @@ def create_gradio_ui(model_files_list, initial_model_status):
                         object_textbox_detect = gr.Textbox(
                             label="Object to Detect", placeholder="e.g., cat, table"
                         )
-                        submit_button_detect = gr.Button(
-                            "SUBMIT", variant="primary"
-                        )
+                        submit_button_detect = gr.Button("SUBMIT", variant="primary")
                         gr.Markdown("*Detect functionality is under development.*")
 
                 # Bottom-Center/Right: RESULT area (Sketch: IMAGE | TASK | RESULT TEXT)
-                
-                
+
         with gr.Row():
             gr.Markdown("---")
         with gr.Row():
@@ -143,9 +131,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
                 result_image_display = gr.Image(
                     label="Input Image (Context)", interactive=False
                 )
-                result_task_display = gr.Textbox(
-                    label="Chosen Task", interactive=False
-                )
+                result_task_display = gr.Textbox(label="Chosen Task", interactive=False)
                 result_prompt_display = gr.Textbox(
                     label="User Prompt / Question",
                     interactive=False,
@@ -202,9 +188,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
                     info="Nucleus sampling parameter.",
                 )
 
-            with gr.Accordion(
-                "Object Settings", open=False
-            ):  # Collapsible sub-section
+            with gr.Accordion("Object Settings", open=False):  # Collapsible sub-section
                 max_objects_slider = gr.Slider(
                     minimum=1,
                     maximum=100,
@@ -213,7 +197,6 @@ def create_gradio_ui(model_files_list, initial_model_status):
                     label="Max Objects",
                     info="Max objects for detection/pointing tasks.",
                 )
-
 
         # --- Event Handlers ---
         model_path_dropdown.change(
@@ -250,49 +233,58 @@ def create_gradio_ui(model_files_list, initial_model_status):
 
         current_tab.change(
             fn=generate_question_suggestions,
-            inputs=[model_path_dropdown, main_image_uploader, last_processed_image, current_tab],
+            inputs=[
+                model_path_dropdown,
+                main_image_uploader,
+                last_processed_image,
+                current_tab,
+            ],
             outputs=[
-                suggestion_status, 
-                query_suggestion_btn1, 
-                query_suggestion_btn2, 
+                suggestion_status,
+                query_suggestion_btn1,
+                query_suggestion_btn2,
                 query_suggestion_btn3,
                 question_textbox_query,
-                last_processed_image
-            ]
+                last_processed_image,
+            ],
         )
 
-        
         # Generate suggestions when image is uploaded and query tab is active
         main_image_uploader.change(
             fn=generate_question_suggestions,
-            inputs=[model_path_dropdown, main_image_uploader, last_processed_image, current_tab],
+            inputs=[
+                model_path_dropdown,
+                main_image_uploader,
+                last_processed_image,
+                current_tab,
+            ],
             outputs=[
-                suggestion_status, 
-                query_suggestion_btn1, 
-                query_suggestion_btn2, 
+                suggestion_status,
+                query_suggestion_btn1,
+                query_suggestion_btn2,
                 query_suggestion_btn3,
                 question_textbox_query,
-                last_processed_image
-            ]
+                last_processed_image,
+            ],
         )
-        
+
         # Make suggestion buttons update the query input when clicked
         query_suggestion_btn1.click(
             fn=handle_suggestion_click,
             inputs=[query_suggestion_btn1],
-            outputs=[question_textbox_query]
+            outputs=[question_textbox_query],
         )
-        
+
         query_suggestion_btn2.click(
             fn=handle_suggestion_click,
             inputs=[query_suggestion_btn2],
-            outputs=[question_textbox_query]
+            outputs=[question_textbox_query],
         )
-        
+
         query_suggestion_btn3.click(
             fn=handle_suggestion_click,
             inputs=[query_suggestion_btn3],
-            outputs=[question_textbox_query]
+            outputs=[question_textbox_query],
         )
 
         submit_button_query.click(

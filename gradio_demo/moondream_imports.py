@@ -38,8 +38,6 @@ except ImportError as e:
     class MoondreamConfig:
         """Dummy MoondreamConfig class when imports fail."""
 
-        pass
-
     class MoondreamModel:
         """Dummy MoondreamModel class when imports fail."""
 
