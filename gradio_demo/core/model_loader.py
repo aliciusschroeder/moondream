@@ -123,7 +123,7 @@ def initialize_model(model_dir: str):
     try:
         # Check if imports were successful
         if MOONDREAM_IMPORTS_SUCCESS:
-            load_or_get_cached_model(selected_initial_model)
+            # load_or_get_cached_model(selected_initial_model)
             initial_model_load_status_message = (
                 f"✅ Initial model '{os.path.basename(selected_initial_model)}' loaded."
             )

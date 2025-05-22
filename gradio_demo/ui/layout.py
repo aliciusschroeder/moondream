@@ -41,59 +41,59 @@ def create_gradio_ui(model_files_list, initial_model_status):
                 main_image_uploader = gr.Image(type="pil", label="IMAGE (Upload Input)")
 
                 # Bottom-Left: SETTINGS (Sketch)
-                with gr.Accordion(
-                    "SETTINGS", open=True
-                ):  # Main accordion for all settings
-                    with gr.Accordion(
-                        "General", open=True
-                    ):  # Collapsible sub-section for general settings
-                        model_path_dropdown = gr.Dropdown(
-                            label="Select Model File",
-                            choices=create_model_choices(model_files_list),
-                            value=model_files_list[0] if model_files_list else None,
-                            info="Select a model file to load",
-                        )
-                        model_load_status_md = gr.Markdown(initial_model_status)
+                # with gr.Accordion(
+                #     "SETTINGS", open=True
+                # ):  # Main accordion for all settings
+                #     with gr.Accordion(
+                #         "General", open=True
+                #     ):  # Collapsible sub-section for general settings
+                #         model_path_dropdown = gr.Dropdown(
+                #             label="Select Model File",
+                #             choices=create_model_choices(model_files_list),
+                #             value=model_files_list[0] if model_files_list else None,
+                #             info="Select a model file to load",
+                #         )
+                #         model_load_status_md = gr.Markdown(initial_model_status)
 
-                    with gr.Accordion(
-                        "Text Generation Settings", open=False
-                    ):  # Collapsible sub-section
-                        max_tokens_slider = gr.Slider(
-                            minimum=1,
-                            maximum=2048,
-                            value=DEFAULT_MAX_TOKENS,
-                            step=1,
-                            label="Max Tokens",
-                            info="Max tokens for text generation.",
-                        )
-                        temperature_slider = gr.Slider(
-                            minimum=0.0,
-                            maximum=2.0,
-                            value=DEFAULT_TEMPERATURE,
-                            step=0.01,
-                            label="Temperature",
-                            info="Randomness control. Lower is more deterministic.",
-                        )
-                        top_p_slider = gr.Slider(
-                            minimum=0.0,
-                            maximum=1.0,
-                            value=DEFAULT_TOP_P,
-                            step=0.01,
-                            label="Top P",
-                            info="Nucleus sampling parameter.",
-                        )
+                #     with gr.Accordion(
+                #         "Text Generation Settings", open=False
+                #     ):  # Collapsible sub-section
+                #         max_tokens_slider = gr.Slider(
+                #             minimum=1,
+                #             maximum=2048,
+                #             value=DEFAULT_MAX_TOKENS,
+                #             step=1,
+                #             label="Max Tokens",
+                #             info="Max tokens for text generation.",
+                #         )
+                #         temperature_slider = gr.Slider(
+                #             minimum=0.0,
+                #             maximum=2.0,
+                #             value=DEFAULT_TEMPERATURE,
+                #             step=0.01,
+                #             label="Temperature",
+                #             info="Randomness control. Lower is more deterministic.",
+                #         )
+                #         top_p_slider = gr.Slider(
+                #             minimum=0.0,
+                #             maximum=1.0,
+                #             value=DEFAULT_TOP_P,
+                #             step=0.01,
+                #             label="Top P",
+                #             info="Nucleus sampling parameter.",
+                #         )
 
-                    with gr.Accordion(
-                        "Object Settings", open=False
-                    ):  # Collapsible sub-section
-                        max_objects_slider = gr.Slider(
-                            minimum=1,
-                            maximum=100,
-                            value=DEFAULT_MAX_OBJECTS,
-                            step=1,
-                            label="Max Objects",
-                            info="Max objects for detection/pointing tasks.",
-                        )
+                #     with gr.Accordion(
+                #         "Object Settings", open=False
+                #     ):  # Collapsible sub-section
+                #         max_objects_slider = gr.Slider(
+                #             minimum=1,
+                #             maximum=100,
+                #             value=DEFAULT_MAX_OBJECTS,
+                #             step=1,
+                #             label="Max Objects",
+                #             info="Max objects for detection/pointing tasks.",
+                #         )
 
             # --- Right Column (scale=2) ---
             with gr.Column(scale=2):
@@ -150,29 +150,89 @@ def create_gradio_ui(model_files_list, initial_model_status):
                         gr.Markdown("*Detect functionality is under development.*")
 
                 # Bottom-Center/Right: RESULT area (Sketch: IMAGE | TASK | RESULT TEXT)
-                gr.Markdown("---")
-                gr.Markdown("## RESULT")
-                with gr.Group():
-                    with gr.Row():
-                        with gr.Column(scale=1):
-                            result_image_display = gr.Image(
-                                label="Input Image (Context)", interactive=False
-                            )
-                            result_task_display = gr.Textbox(
-                                label="Chosen Task", interactive=False
-                            )
-                            result_prompt_display = gr.Textbox(
-                                label="User Prompt / Question",
-                                interactive=False,
-                                show_copy_button=True,
-                            )
-                        with gr.Column(scale=2):
-                            result_text_output = gr.Textbox(
-                                label="Model Response (Result Text)",
-                                interactive=False,
-                                lines=10,
-                                show_copy_button=True,
-                            )
+                
+                
+        with gr.Row():
+            gr.Markdown("---")
+        with gr.Row():
+            gr.Markdown("## RESULT")
+
+        with gr.Row():
+            with gr.Column(scale=1):
+                result_image_display = gr.Image(
+                    label="Input Image (Context)", interactive=False
+                )
+                result_task_display = gr.Textbox(
+                    label="Chosen Task", interactive=False
+                )
+                result_prompt_display = gr.Textbox(
+                    label="User Prompt / Question",
+                    interactive=False,
+                    show_copy_button=True,
+                )
+            with gr.Column(scale=2):
+                result_text_output = gr.Textbox(
+                    label="Model Response (Result Text)",
+                    interactive=False,
+                    lines=10,
+                    show_copy_button=True,
+                )
+
+        with gr.Sidebar():
+            # with gr.Accordion(
+            #         "SETTINGS", open=True
+            #     ):  # Main accordion for all settings
+            with gr.Accordion(
+                "General", open=True
+            ):  # Collapsible sub-section for general settings
+                model_path_dropdown = gr.Dropdown(
+                    label="Select Model File",
+                    choices=create_model_choices(model_files_list),
+                    value=model_files_list[0] if model_files_list else None,
+                    info="Select a model file to load",
+                )
+                model_load_status_md = gr.Markdown(initial_model_status)
+
+            with gr.Accordion(
+                "Text Generation Settings", open=False
+            ):  # Collapsible sub-section
+                max_tokens_slider = gr.Slider(
+                    minimum=1,
+                    maximum=2048,
+                    value=DEFAULT_MAX_TOKENS,
+                    step=1,
+                    label="Max Tokens",
+                    info="Max tokens for text generation.",
+                )
+                temperature_slider = gr.Slider(
+                    minimum=0.0,
+                    maximum=2.0,
+                    value=DEFAULT_TEMPERATURE,
+                    step=0.01,
+                    label="Temperature",
+                    info="Randomness control. Lower is more deterministic.",
+                )
+                top_p_slider = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=DEFAULT_TOP_P,
+                    step=0.01,
+                    label="Top P",
+                    info="Nucleus sampling parameter.",
+                )
+
+            with gr.Accordion(
+                "Object Settings", open=False
+            ):  # Collapsible sub-section
+                max_objects_slider = gr.Slider(
+                    minimum=1,
+                    maximum=100,
+                    value=DEFAULT_MAX_OBJECTS,
+                    step=1,
+                    label="Max Objects",
+                    info="Max objects for detection/pointing tasks.",
+                )
+
 
         # --- Event Handlers ---
         model_path_dropdown.change(
