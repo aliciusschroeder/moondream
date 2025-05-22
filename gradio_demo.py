@@ -7,8 +7,8 @@ import torch
 from PIL import ImageDraw
 from torchvision.transforms.v2 import Resize
 from transformers import AutoTokenizer, TextIteratorStreamer
-
-from moondream.hf import LATEST_REVISION, Moondream, detect_device
+from moondream.torch.weights import load_weights_into_model
+from moondream.torch.hf_moondream import HfConfig, HfMoondream
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--cpu", action="store_true")
@@ -18,17 +18,20 @@ if args.cpu:
     device = torch.device("cpu")
     dtype = torch.float32
 else:
-    device, dtype = detect_device()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Using device:", device)
     if device != torch.device("cpu"):
-        print("Using device:", device)
         print("If you run into issues, pass the `--cpu` flag to this script.")
         print()
 
 model_id = "vikhyatk/moondream2"
-tokenizer = AutoTokenizer.from_pretrained(model_id, revision=LATEST_REVISION)
-moondream = Moondream.from_pretrained(
-    model_id, revision=LATEST_REVISION, torch_dtype=dtype
-).to(device=device)
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+config = HfConfig()
+moondream = HfMoondream(config)
+# MODELPATH = "/home/alec/moondream/models/0q7mnki2.safetensors"
+MODELPATH = "/home/alec/moondream/models/moondream_base.safetensors"
+load_weights_into_model(MODELPATH, moondream.model)
+moondream.to(device)
 moondream.eval()
 
 
@@ -81,7 +84,7 @@ def process_answer(img, answer):
         ImageDraw.Draw(draw_image).rectangle(bbox, outline="red", width=3)
         return gr.update(visible=True, value=draw_image)
 
-    return gr.update(visible=False, value=None)
+    return gr.update(visible=True, value=None)
 
 
 with gr.Blocks() as demo:
@@ -97,10 +100,10 @@ with gr.Blocks() as demo:
         img = gr.Image(type="pil", label="Upload an Image")
         with gr.Column():
             output = gr.Markdown(label="Response")
-            ann = gr.Image(visible=False, label="Annotated Image")
+            ann = gr.Image(visible=True, label="Annotated Image")
 
     submit.click(answer_question, [img, prompt], output)
     prompt.submit(answer_question, [img, prompt], output)
-    output.change(process_answer, [img, output], ann, show_progress=False)
+    output.change(process_answer, [img, output], ann, show_progress=True)
 
 demo.queue().launch(debug=True)

@@ -68,7 +68,10 @@ class CocoDataset(Dataset):
         }
 
     def __init__(
-        self, tokenizer: Optional[Tokenizer] = None, filepath: Optional[str] = None, split="train"
+        self,
+        tokenizer: Optional[Tokenizer] = None,
+        filepath: Optional[str] = None,
+        split="train",
     ):
         if tokenizer is None and filepath is None:
             raise ValueError("Either tokenizer or filepath must be provided.")
