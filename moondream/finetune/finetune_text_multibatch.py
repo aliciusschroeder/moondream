@@ -3,6 +3,7 @@ import os
 
 from bitsandbytes.optim import AdamW8bit
 from datasets import load_dataset
+
 # from safetensors.torch import save_file
 import torch
 import torch.nn as nn
@@ -208,8 +209,7 @@ def main():
             # → batched vision encoding
             # 1) collect crops for every image
             batch_crops = [
-                prepare_crops(img, config.vision, device=model.device)
-                for img in images
+                prepare_crops(img, config.vision, device=model.device) for img in images
             ]
             # each element is (crops_tensor, tiling_info)
             # 2) cat all crops into one big [sum(N_i), …] tensor
@@ -230,7 +230,7 @@ def main():
             # 4) split back per image
             counts = [crops.size(0) for crops, _ in batch_crops]
             g_splits = torch.split(global_feats, counts, dim=0)
-            l_splits = torch.split(local_feats,  counts, dim=0)
+            l_splits = torch.split(local_feats, counts, dim=0)
 
             # 5) reconstruct & project each example
             img_embs = []

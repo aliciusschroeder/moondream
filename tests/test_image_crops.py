@@ -63,11 +63,12 @@ def test_reconstruction():
     # The center region should be significantly brighter than the edges
     assert center_reconstructed > reconstructed_np[:100, :100].mean() + 100
 
+
 def test_select_tiling():
     # Test with both dimensions smaller than crop size
     # both dims <= crop_size → always (1,1)
     assert select_tiling(100, 100, 200, 10) == (1, 1)
-    
+
     # dims > crop_size but min_h*min_w (ceil(500/100)^2=25) > max_crops → fallback ratio branch
     h_tiles, w_tiles = select_tiling(500, 500, 100, 5)
     # ratio = sqrt(5/(5*5)) ~0.447 → floor(5*0.447)=2
@@ -84,6 +85,7 @@ def test_select_tiling():
     # Exceeding max_crops with h > w
     # h_tiles > w_tiles and h_tiles*w_tiles > max_crops → scales down h_tiles
     assert select_tiling(height=310, width=110, crop_size=100, max_crops=9) == (4, 2)
+
 
 def test_overlap_crop_non_square():
     # non-square image → tiling_h != tiling_w, and crop count = tiling_h*tiling_w + 1
@@ -106,6 +108,7 @@ def test_reconstruct_small_image():
 
 def test_pil_fallback_branch(monkeypatch):
     original_import = builtins.__import__
+
     def mocked_import(name, *args, **kwargs):
         if name == "pyvips":
             raise ImportError("Simulated ImportError for pyvips")
@@ -114,11 +117,14 @@ def test_pil_fallback_branch(monkeypatch):
     with mock.patch("builtins.__import__", side_effect=mocked_import):
         # sys.modules.pop("moondream.torch.image_crops", None)
         from moondream.torch import image_crops
+
         importlib.reload(image_crops)
-        monkeypatch.setattr(image_crops, 'HAS_VIPS', False)
+        monkeypatch.setattr(image_crops, "HAS_VIPS", False)
         # random image to trigger the PIL branch
         test_image = np.random.randint(0, 256, (800, 800, 3), dtype=np.uint8)
-        result = image_crops.overlap_crop_image(test_image, overlap_margin=4, max_crops=4)
+        result = image_crops.overlap_crop_image(
+            test_image, overlap_margin=4, max_crops=4
+        )
         # must still produce a 378×378 global crop via PIL
-        assert result['crops'][0].shape == (378, 378, 3)
-        assert isinstance(result['tiling'], tuple)
+        assert result["crops"][0].shape == (378, 378, 3)
+        assert isinstance(result["tiling"], tuple)

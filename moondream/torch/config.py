@@ -40,6 +40,7 @@ class RegionConfig:
     inner_dim: int = 8192
     group_size: Optional[int] = None
 
+
 @dataclass(frozen=True)
 class TokenizerConfig:
     bos_id: int = 50256
