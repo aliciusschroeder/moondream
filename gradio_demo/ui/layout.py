@@ -30,6 +30,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
         process_query_submission,
         generate_question_suggestions,
         handle_suggestion_click,
+        process_caption_submission,
     )
     from ..tasks import placeholder_task_handler
 
@@ -97,7 +98,6 @@ def create_gradio_ui(model_files_list, initial_model_status):
                             info="Select the desired length of the caption.",
                         )
                         submit_button_caption = gr.Button("SUBMIT", variant="primary")
-                        gr.Markdown("*Caption functionality is under development.*")
 
                     with gr.TabItem("📍 Point", id="point_tab") as point_tab:
                         gr.Markdown(
@@ -310,16 +310,11 @@ def create_gradio_ui(model_files_list, initial_model_status):
 
         # Caption task handler
         submit_button_caption.click(
-            fn=lambda model, img, mt, temp, tp: placeholder_task_handler(
-                model,
-                img,
-                "N/A (No direct text input for caption)",
-                "Caption",
-                {"max_tokens": mt, "temp": temp, "top_p": tp},
-            ),
+            fn=process_caption_submission,
             inputs=[
                 model_path_dropdown,
                 main_image_uploader,
+                caption_length_selector,
                 max_tokens_slider,
                 temperature_slider,
                 top_p_slider,
