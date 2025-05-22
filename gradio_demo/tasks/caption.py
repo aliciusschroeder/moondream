@@ -3,6 +3,7 @@ from PIL import Image
 
 from ..core.model_loader import load_or_get_cached_model
 
+
 def caption_image(
     model_path_selected: str,
     pil_image: Image.Image,
@@ -36,7 +37,9 @@ def caption_image(
     if pil_image is None:
         raise gr.Error("No image provided for query. Please upload an image.")
     if not caption_length:
-        raise gr.Error("No caption length provided for query. Please select a caption length.")
+        raise gr.Error(
+            "No caption length provided for query. Please select a caption length."
+        )
 
     try:
         model = load_or_get_cached_model(model_path_selected)

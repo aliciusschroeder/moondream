@@ -4,6 +4,8 @@ Defines the full Gradio UI layout and returns the interface demo.
 
 import gradio as gr
 
+from .events_suggestions import question_suggestions_event, handle_suggestion_click
+from .events_tasks import process_caption_submission, process_query_submission
 from ..utils.ui_utils import create_model_choices
 from ..core.config import APP_TITLE, APP_DESCRIPTION, PRIMARY_HUE, SECONDARY_HUE
 from ..moondream_imports import (
@@ -27,10 +29,6 @@ def create_gradio_ui(model_files_list, initial_model_status):
     """
     from .events import (
         handle_model_selection_change,
-        process_query_submission,
-        generate_question_suggestions,
-        handle_suggestion_click,
-        process_caption_submission,
     )
     from ..tasks import placeholder_task_handler
 
@@ -232,7 +230,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
         )
 
         current_tab.change(
-            fn=generate_question_suggestions,
+            fn=question_suggestions_event,
             inputs=[
                 model_path_dropdown,
                 main_image_uploader,
@@ -251,7 +249,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
 
         # Generate suggestions when image is uploaded and query tab is active
         main_image_uploader.change(
-            fn=generate_question_suggestions,
+            fn=question_suggestions_event,
             inputs=[
                 model_path_dropdown,
                 main_image_uploader,
