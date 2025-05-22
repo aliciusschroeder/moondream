@@ -10,3 +10,5 @@ wandb/
 moondream_finetune.safetensors
 moondream/finetune/evaluate_finetune.py
 .aider*
+.coverage
+coverage.xml
