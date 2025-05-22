@@ -5,28 +5,11 @@ Event handlers for the Gradio UI.
 import os
 import gradio as gr
 from PIL import Image
-import hashlib
-
-from ..tasks.suggestions import get_question_suggestions
 
 from ..core.model_loader import load_or_get_cached_model
+from ..tasks.suggestions import get_question_suggestions
 from ..tasks.query import query_moondream_model
-from ..tasks import placeholder_task_handler
-
-
-def get_image_hash(image):
-    """Generate a simple hash for an image to detect changes"""
-    if image is None:
-        return None
-    try:
-        # Get a simplified representation of the image
-        img_copy = image.copy()
-        img_copy.thumbnail((100, 100))  # Resize for faster hashing
-        img_bytes = img_copy.tobytes()
-        return hashlib.md5(img_bytes).hexdigest()
-    except Exception:
-        # Fallback to None if we can't hash the image
-        return None
+from ..utils.img_utils import get_image_hash
 
 
 def handle_model_selection_change(selected_model_path: str):
@@ -148,6 +131,55 @@ def handle_suggestion_click(suggestion_text):
     return suggestion_text
 
 
+def handle_submission_error(
+    error_message: str,
+    image_col_update: gr.update,
+    text_col_update: gr.update,
+):
+    """
+    Handle submission error.
+
+    Args:
+        error_message (str): Error message to display
+        image_col_update (gr.update): Update for the image column
+        text_col_update (gr.update): Update for the text column
+
+    Returns:
+        tuple: (image=None, task_name, prompt, error message, image_col_update, text_col_update)
+    """
+
+    return (
+        None,
+        "Error",
+        "N/A",
+        error_message,
+        image_col_update,
+        text_col_update,
+    )
+
+
+def check_submission(
+    model_path_selected: str,
+    pil_image: Image.Image,
+    question_text: str,
+):
+    if pil_image is None:
+        gr.Warning("Please upload an image for the query.")
+        # Return values to clear/indicate error in result fields
+        return "Error: Image required for query. Please upload an image."
+    if not question_text or not question_text.strip():
+        gr.Warning("Please enter a question for the query.")
+        return "Error: Question required for query. Please enter a question."
+
+    if not model_path_selected:
+        gr.Warning("No model selected for query. Please choose a model from Settings.")
+        return (
+            "Error: No model selected for query. Please choose a model from Settings."
+        )
+
+    return None
+
+
 def process_query_submission(
     model_path_selected: str,
     pil_image: Image.Image,
@@ -174,25 +206,15 @@ def process_query_submission(
     image_col_update = gr.update(scale=1)
     text_col_update = gr.update(scale=7)
 
-    # UI-level validation: Use gr.Warning for recoverable issues, actual call raises gr.Error
-    if pil_image is None:
-        gr.Warning("Please upload an image for the query.")
-        # Return values to clear/indicate error in result fields
-        return (
-            None,
-            task_name,
-            question_text or "N/A",
-            "Error: Image required for query. Please upload an image.",
-            image_col_update,
-            text_col_update,
-        )
-    if not question_text or not question_text.strip():
-        gr.Warning("Please enter a question for the query.")
-        return (
-            pil_image,
-            task_name,
-            "No question provided.",
-            "Error: Question required for query. Please enter a question.",
+    # Check for submission errors
+    error_message = check_submission(
+        model_path_selected,
+        pil_image,
+        question_text,
+    )
+    if error_message:
+        return handle_submission_error(
+            error_message,
             image_col_update,
             text_col_update,
         )
@@ -220,10 +242,7 @@ def process_query_submission(
         # Gradio will display this error automatically.
         # We still return values to update the result fields appropriately, showing the error message.
         print(f"Gradio Error caught in process_query_submission: {ge}")
-        return (
-            pil_image,
-            task_name,
-            question_text,
+        return handle_submission_error(
             f"Operation Failed: {str(ge)}",
             image_col_update,
             text_col_update,
@@ -233,10 +252,7 @@ def process_query_submission(
         error_msg = f"An unexpected error occurred during query processing: {str(e)}"
         print(f"ERROR: {error_msg}")
         # Optionally, re-raise as gr.Error or return error message
-        return (
-            pil_image,
-            task_name,
-            question_text,
+        return handle_submission_error(
             error_msg,
             image_col_update,
             text_col_update,

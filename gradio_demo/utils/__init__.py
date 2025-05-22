@@ -8,6 +8,9 @@ from .logging_utils import (
     log_model_info,
     log_error,
 )
+from .img_utils import (
+    get_image_hash,
+)
 
 from .ui_utils import create_model_choices
 
@@ -17,4 +20,5 @@ __all__ = [
     "log_model_info",
     "log_error",
     "create_model_choices",
+    "get_image_hash",
 ]
