@@ -25,7 +25,12 @@ def create_gradio_ui(model_files_list, initial_model_status):
     Returns:
         gr.Blocks: The configured Gradio interface
     """
-    from .events import handle_model_selection_change, process_query_submission
+    from .events import (
+        handle_model_selection_change, 
+        process_query_submission,
+        generate_question_suggestions,
+        handle_suggestion_click
+    )
     from ..tasks import placeholder_task_handler
 
     # Create the Gradio Blocks interface
@@ -33,6 +38,10 @@ def create_gradio_ui(model_files_list, initial_model_status):
         theme=gr.themes.Soft(primary_hue=PRIMARY_HUE, secondary_hue=SECONDARY_HUE)
     ) as demo:
         gr.Markdown(APP_DESCRIPTION)
+
+        # Hidden state variables for tracking
+        last_processed_image = gr.State(None)  # Store hash of last processed image
+        current_tab = gr.State("query_tab")  # Track current tab
 
         with gr.Row():  # Main layout: Left column for Image & Settings, Right for Tasks & Results
             # --- Left Column (scale=1) ---
@@ -106,6 +115,28 @@ def create_gradio_ui(model_files_list, initial_model_status):
                             value="Describe the image.",
                             lines=3,
                         )
+                        
+                        # Add suggestion buttons row
+                        with gr.Row() as suggestion_row:
+                            suggestion_status = gr.Markdown("*Upload an image to get question suggestions*", visible=True)
+                        
+                        with gr.Row() as question_buttons_row:
+                            query_suggestion_btn1 = gr.Button(
+                                "Suggestion 1", 
+                                variant="secondary", 
+                                visible=False
+                            )
+                            query_suggestion_btn2 = gr.Button(
+                                "Suggestion 2", 
+                                variant="secondary", 
+                                visible=False
+                            )
+                            query_suggestion_btn3 = gr.Button(
+                                "Suggestion 3", 
+                                variant="secondary", 
+                                visible=False
+                            )
+                            
                         submit_button_query = gr.Button(
                             "SUBMIT", variant="primary"
                         )  # Sketch label
@@ -239,6 +270,79 @@ def create_gradio_ui(model_files_list, initial_model_status):
             fn=handle_model_selection_change,
             inputs=[model_path_dropdown],
             outputs=[model_load_status_md],
+        )
+
+        # Track tab changes
+        def update_current_tab():
+            print(f"Current tab: {current_tab.value}")
+            return current_tab.value
+
+        query_tab.select(
+            lambda: "query_tab",
+            inputs=None,
+            outputs=[current_tab],
+        )
+        caption_tab.select(
+            lambda: "caption_tab",
+            inputs=None,
+            outputs=[current_tab],
+        )
+        point_tab.select(
+            lambda: "point_tab",
+            inputs=None,
+            outputs=[current_tab],
+        )
+        detect_tab.select(
+            lambda: "detect_tab",
+            inputs=None,
+            outputs=[current_tab],
+        )
+
+        current_tab.change(
+            fn=generate_question_suggestions,
+            inputs=[model_path_dropdown, main_image_uploader, last_processed_image, current_tab],
+            outputs=[
+                suggestion_status, 
+                query_suggestion_btn1, 
+                query_suggestion_btn2, 
+                query_suggestion_btn3,
+                question_textbox_query,
+                last_processed_image
+            ]
+        )
+
+        
+        # Generate suggestions when image is uploaded and query tab is active
+        main_image_uploader.change(
+            fn=generate_question_suggestions,
+            inputs=[model_path_dropdown, main_image_uploader, last_processed_image, current_tab],
+            outputs=[
+                suggestion_status, 
+                query_suggestion_btn1, 
+                query_suggestion_btn2, 
+                query_suggestion_btn3,
+                question_textbox_query,
+                last_processed_image
+            ]
+        )
+        
+        # Make suggestion buttons update the query input when clicked
+        query_suggestion_btn1.click(
+            fn=handle_suggestion_click,
+            inputs=[query_suggestion_btn1],
+            outputs=[question_textbox_query]
+        )
+        
+        query_suggestion_btn2.click(
+            fn=handle_suggestion_click,
+            inputs=[query_suggestion_btn2],
+            outputs=[question_textbox_query]
+        )
+        
+        query_suggestion_btn3.click(
+            fn=handle_suggestion_click,
+            inputs=[query_suggestion_btn3],
+            outputs=[question_textbox_query]
         )
 
         submit_button_query.click(
