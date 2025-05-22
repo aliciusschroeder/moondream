@@ -1,19 +1,25 @@
 """
 Defines the full Gradio UI layout and returns the interface demo.
 """
+
 import gradio as gr
 from ..core.config import APP_TITLE, APP_DESCRIPTION, PRIMARY_HUE, SECONDARY_HUE
-from ..moondream_imports import DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P, DEFAULT_MAX_OBJECTS
+from ..moondream_imports import (
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_TEMPERATURE,
+    DEFAULT_TOP_P,
+    DEFAULT_MAX_OBJECTS,
+)
 
 
 def create_gradio_ui(model_files_list, initial_model_status):
     """
     Create and configure the Gradio UI.
-    
+
     Args:
         model_files_list (list): List of model file paths
         initial_model_status (str): Initial model loading status message
-        
+
     Returns:
         gr.Blocks: The configured Gradio interface
     """
@@ -22,9 +28,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
 
     # Create the Gradio Blocks interface
     with gr.Blocks(
-        theme=gr.themes.Soft(
-            primary_hue=PRIMARY_HUE, secondary_hue=SECONDARY_HUE
-        )
+        theme=gr.themes.Soft(primary_hue=PRIMARY_HUE, secondary_hue=SECONDARY_HUE)
     ) as demo:
         gr.Markdown(APP_DESCRIPTION)
 
@@ -35,7 +39,9 @@ def create_gradio_ui(model_files_list, initial_model_status):
                 main_image_uploader = gr.Image(type="pil", label="IMAGE (Upload Input)")
 
                 # Bottom-Left: SETTINGS (Sketch)
-                with gr.Accordion("SETTINGS", open=True):  # Main accordion for all settings
+                with gr.Accordion(
+                    "SETTINGS", open=True
+                ):  # Main accordion for all settings
                     with gr.Accordion(
                         "General", open=True
                     ):  # Collapsible sub-section for general settings
@@ -144,13 +150,20 @@ def create_gradio_ui(model_files_list, initial_model_status):
                             result_image_display = gr.Image(
                                 label="Input Image (Context)", interactive=False
                             )
-                            result_task_display = gr.Textbox(label="Chosen Task", interactive=False)
+                            result_task_display = gr.Textbox(
+                                label="Chosen Task", interactive=False
+                            )
                             result_prompt_display = gr.Textbox(
-                                label="User Prompt / Question", interactive=False
+                                label="User Prompt / Question",
+                                interactive=False,
+                                show_copy_button=True,
                             )
                         with gr.Column(scale=2):
                             result_text_output = gr.Textbox(
-                                label="Model Response (Result Text)", interactive=False, lines=10
+                                label="Model Response (Result Text)",
+                                interactive=False,
+                                lines=10,
+                                show_copy_button=True,
                             )
 
         # --- Event Handlers ---
@@ -240,22 +253,4 @@ def create_gradio_ui(model_files_list, initial_model_status):
                 result_text_output,
             ],
         )
-
-        gr.Markdown(
-            """
-            ---
-            **Notes & Sketch Alignment:**
-            - **IMAGE (Top-Left):** Main image uploader.
-            - **SETTINGS (Bottom-Left):** Collapsible sections for General, Text Gen, Objects.
-            - **query | Caption | ... (Top-Right):** Implemented as Tabs. Each tab has relevant inputs and a SUBMIT button.
-            - **RESULT (Bottom-Right):** Displays:
-                - Input Image (Context)
-                - Chosen Task
-                - User Prompt / Question
-                - Model Response (Result Text)
-            - Model loading status and errors are reported. Check console for detailed logs.
-            """
-        )
-
     return demo
-

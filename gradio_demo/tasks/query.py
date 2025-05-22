@@ -1,6 +1,7 @@
 """
 Task-specific logic for querying the Moondream model.
 """
+
 import gradio as gr
 from PIL import Image
 
@@ -17,7 +18,7 @@ def query_moondream_model(
 ):
     """
     Query the Moondream model with an image and question.
-    
+
     Args:
         model_path_selected (str): Path to the model file
         pil_image (PIL.Image): Image to query
@@ -25,10 +26,10 @@ def query_moondream_model(
         max_tokens_val (int): Maximum tokens to generate
         temperature_val (float): Temperature for generation
         top_p_val (float): Top-p value for generation
-        
+
     Returns:
         str: The model's response
-        
+
     Raises:
         gr.Error: If inputs are invalid or query fails
     """
@@ -78,4 +79,3 @@ def query_moondream_model(
         print(f"ERROR: {error_message}")
         # Convert other exceptions to gr.Error for consistent UI error reporting
         raise gr.Error(error_message)
-

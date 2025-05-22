@@ -1,6 +1,7 @@
 """
 Placeholder tasks for features that are under development.
 """
+
 import gradio as gr
 
 
@@ -9,14 +10,14 @@ def placeholder_task_handler(
 ):
     """
     Generic placeholder handler for tasks not yet implemented.
-    
+
     Args:
         model_path (str): Path to the model file
         image (PIL.Image): Image for the task
         task_input_value (str): Task-specific input
         task_name_str (str): Name of the task
         relevant_settings_dict (dict): Task-specific settings
-        
+
     Returns:
         tuple: (image, task_name, input_display, response)
     """
@@ -52,4 +53,3 @@ def placeholder_task_handler(
         str(task_input_value) if task_input_value else "N/A",
         response_message,
     )
-

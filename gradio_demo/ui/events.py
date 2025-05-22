@@ -1,6 +1,7 @@
 """
 Event handlers for the Gradio UI.
 """
+
 import os
 import gradio as gr
 from PIL import Image
@@ -13,10 +14,10 @@ from ..tasks import placeholder_task_handler
 def handle_model_selection_change(selected_model_path: str):
     """
     Handle model selection change event.
-    
+
     Args:
         selected_model_path (str): Path to the selected model file
-        
+
     Yields:
         str: Status message updates as generator
     """
@@ -44,7 +45,7 @@ def process_query_submission(
 ):
     """
     Process query task submission.
-    
+
     Args:
         model_path_selected (str): Path to the model file
         pil_image (PIL.Image): Image to query
@@ -52,12 +53,12 @@ def process_query_submission(
         max_tokens_val (int): Maximum tokens to generate
         temperature_val (float): Temperature for generation
         top_p_val (float): Top-p value for generation
-        
+
     Returns:
         tuple: (image, task_name, prompt, response)
     """
     task_name = "Query"
-    
+
     # UI-level validation: Use gr.Warning for recoverable issues, actual call raises gr.Error
     if pil_image is None:
         gr.Warning("Please upload an image for the query.")
@@ -100,4 +101,3 @@ def process_query_submission(
         print(f"ERROR: {error_msg}")
         # Optionally, re-raise as gr.Error or return error message
         return pil_image, task_name, question_text, error_msg
-

@@ -14,20 +14,20 @@ try:
     )
     from moondream.torch.config import MoondreamConfig
     from moondream.torch.weights import load_weights_into_model
-    
+
     # Set flag indicating successful import
     MOONDREAM_IMPORTS_SUCCESS = True
-    
+
 except ImportError as e:
     print("ERROR: Failed to import Moondream components.")
     print(
         "Please ensure the Moondream library is correctly installed and accessible in your PYTHONPATH."
     )
     print(f"Details: {e}")
-    
+
     # Set flag indicating import failure
     MOONDREAM_IMPORTS_SUCCESS = False
-    
+
     # Define fallback dummy constants
     DEFAULT_MAX_TOKENS = 512  # Fallback default
     DEFAULT_TEMPERATURE = 0.2  # Fallback default
@@ -37,17 +37,17 @@ except ImportError as e:
     # Define dummy classes if import fails
     class MoondreamConfig:
         """Dummy MoondreamConfig class when imports fail."""
+
         pass
 
     class MoondreamModel:
         """Dummy MoondreamModel class when imports fail."""
+
         def __init__(self, config):
             self.config = config
 
         def query(self, image, question, stream=False, settings=None):
-            return {
-                "answer": "Error: MoondreamModel not loaded due to import failure."
-            }
+            return {"answer": "Error: MoondreamModel not loaded due to import failure."}
 
         def to(self, device):
             pass
@@ -59,15 +59,15 @@ except ImportError as e:
         """Dummy load_weights function when imports fail."""
         raise ImportError("load_weights_into_model is not available.")
 
+
 # Make components available for import from this module
 __all__ = [
-    'MoondreamModel', 
-    'MoondreamConfig',
-    'load_weights_into_model',
-    'DEFAULT_MAX_TOKENS',
-    'DEFAULT_TEMPERATURE',
-    'DEFAULT_TOP_P',
-    'DEFAULT_MAX_OBJECTS',
-    'MOONDREAM_IMPORTS_SUCCESS'
+    "MoondreamModel",
+    "MoondreamConfig",
+    "load_weights_into_model",
+    "DEFAULT_MAX_TOKENS",
+    "DEFAULT_TEMPERATURE",
+    "DEFAULT_TOP_P",
+    "DEFAULT_MAX_OBJECTS",
+    "MOONDREAM_IMPORTS_SUCCESS",
 ]
-

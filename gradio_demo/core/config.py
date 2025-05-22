@@ -1,6 +1,7 @@
 """
 Constants such as MODEL_DIR, default parameters, and app configuration.
 """
+
 import os
 
 # --- Configuration ---
@@ -12,7 +13,9 @@ APP_TITLE = "🌔 Moondream Interface"
 APP_DESCRIPTION = """
 Upload an image, configure settings, choose a task, provide input, and see the results.
 Models are loaded from: `{}`.
-""".format(MODEL_DIR)
+""".format(
+    MODEL_DIR
+)
 
 # Default model selection message
 DEFAULT_MODEL_STATUS_MESSAGE = "No models found or directory empty."
@@ -24,6 +27,7 @@ SECONDARY_HUE = "sky"
 # Debug mode
 DEBUG_MODE = True
 
+
 # Function to get all constants as a dict (useful for debugging/logging)
 def get_config_dict():
     """Return all config constants as a dictionary."""
@@ -32,4 +36,3 @@ def get_config_dict():
         "APP_TITLE": APP_TITLE,
         "DEBUG_MODE": DEBUG_MODE,
     }
-
