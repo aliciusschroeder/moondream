@@ -15,7 +15,8 @@ import wandb
 
 from moondream.finetune.dataloader import get_dataloader
 from moondream.finetune.lr_schedule import lr_schedule
-from moondream.torch.image_crops import prepare_crops, reconstruct_from_crops
+from moondream.torch.image_crops import reconstruct_from_crops
+from moondream.torch.vision import prepare_crops
 
 from ..torch.moondream import MoondreamConfig, MoondreamModel, text_encoder
 from ..torch.text import TextConfig, _lm_head, _produce_hidden
@@ -67,7 +68,7 @@ class CocoDataset(Dataset):
         }
 
     def __init__(
-        self, tokenizer: Optional[Tokenizer], filepath: Optional[str], split="train"
+        self, tokenizer: Optional[Tokenizer] = None, filepath: Optional[str] = None, split="train"
     ):
         if tokenizer is None and filepath is None:
             raise ValueError("Either tokenizer or filepath must be provided.")
