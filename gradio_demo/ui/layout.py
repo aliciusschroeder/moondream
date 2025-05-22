@@ -49,68 +49,13 @@ def create_gradio_ui(model_files_list, initial_model_status):
                 # Top-Left: IMAGE (Sketch)
                 main_image_uploader = gr.Image(type="pil", label="IMAGE (Upload Input)")
 
-                # Bottom-Left: SETTINGS (Sketch)
-                # with gr.Accordion(
-                #     "SETTINGS", open=True
-                # ):  # Main accordion for all settings
-                #     with gr.Accordion(
-                #         "General", open=True
-                #     ):  # Collapsible sub-section for general settings
-                #         model_path_dropdown = gr.Dropdown(
-                #             label="Select Model File",
-                #             choices=create_model_choices(model_files_list),
-                #             value=model_files_list[0] if model_files_list else None,
-                #             info="Select a model file to load",
-                #         )
-                #         model_load_status_md = gr.Markdown(initial_model_status)
-
-                #     with gr.Accordion(
-                #         "Text Generation Settings", open=False
-                #     ):  # Collapsible sub-section
-                #         max_tokens_slider = gr.Slider(
-                #             minimum=1,
-                #             maximum=2048,
-                #             value=DEFAULT_MAX_TOKENS,
-                #             step=1,
-                #             label="Max Tokens",
-                #             info="Max tokens for text generation.",
-                #         )
-                #         temperature_slider = gr.Slider(
-                #             minimum=0.0,
-                #             maximum=2.0,
-                #             value=DEFAULT_TEMPERATURE,
-                #             step=0.01,
-                #             label="Temperature",
-                #             info="Randomness control. Lower is more deterministic.",
-                #         )
-                #         top_p_slider = gr.Slider(
-                #             minimum=0.0,
-                #             maximum=1.0,
-                #             value=DEFAULT_TOP_P,
-                #             step=0.01,
-                #             label="Top P",
-                #             info="Nucleus sampling parameter.",
-                #         )
-
-                #     with gr.Accordion(
-                #         "Object Settings", open=False
-                #     ):  # Collapsible sub-section
-                #         max_objects_slider = gr.Slider(
-                #             minimum=1,
-                #             maximum=100,
-                #             value=DEFAULT_MAX_OBJECTS,
-                #             step=1,
-                #             label="Max Objects",
-                #             info="Max objects for detection/pointing tasks.",
-                #         )
-
             # --- Right Column (scale=2) ---
             with gr.Column(scale=2):
                 # Top-Right: Tabs for tasks (Sketch: query | Caption | ...)
                 with gr.Tabs() as tabs:
-                    with gr.TabItem("❓ Query", id="query_tab"):
+                    with gr.TabItem("❓ Query", id="query_tab") as query_tab:
                         question_textbox_query = gr.Textbox(
-                            label="Query",  # Sketch label
+                            label="Query", 
                             placeholder="Enter a visual query, e.g. What is in this image? Describe the scene.",
                             value="Describe the image.",
                             lines=3,
@@ -139,16 +84,21 @@ def create_gradio_ui(model_files_list, initial_model_status):
                             
                         submit_button_query = gr.Button(
                             "SUBMIT", variant="primary"
-                        )  # Sketch label
+                        )
 
-                    with gr.TabItem("📝 Caption", id="caption_tab"):
+                    with gr.TabItem("📝 Caption", id="caption_tab") as caption_tab:
                         gr.Markdown(
                             "Caption generation. Settings from 'Text Generation Settings' will apply."
                         )
                         caption_length_selector = gr.Dropdown(
                             label="Caption Length",
-                            choices=["Short", "Medium", "Long"],
-                            value="Medium",
+                            choices=[
+                                ("Short", "short"), 
+                                ("Medium", "normal"),
+                                ("Long", "long"),
+                                ],
+                            value="normal",
+                            interactive=True,
                             info="Select the desired length of the caption.",
                         )
                         submit_button_caption = gr.Button(
@@ -156,7 +106,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
                         )
                         gr.Markdown("*Caption functionality is under development.*")
 
-                    with gr.TabItem("📍 Point", id="point_tab"):
+                    with gr.TabItem("📍 Point", id="point_tab") as point_tab:
                         gr.Markdown(
                             "Point to object. Settings from 'Object Settings' will apply."
                         )
@@ -168,7 +118,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
                         )
                         gr.Markdown("*Point functionality is under development.*")
 
-                    with gr.TabItem("👁️ Detect", id="detect_tab"):
+                    with gr.TabItem("👁️ Detect", id="detect_tab") as detect_tab:
                         gr.Markdown(
                             "Detect objects. Settings from 'Object Settings' will apply."
                         )
@@ -189,7 +139,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
             gr.Markdown("## RESULT")
 
         with gr.Row():
-            with gr.Column(scale=1):
+            with gr.Column(scale=1) as result_image_col:
                 result_image_display = gr.Image(
                     label="Input Image (Context)", interactive=False
                 )
@@ -201,7 +151,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
                     interactive=False,
                     show_copy_button=True,
                 )
-            with gr.Column(scale=2):
+            with gr.Column(scale=2) as result_text_col:
                 result_text_output = gr.Textbox(
                     label="Model Response (Result Text)",
                     interactive=False,
@@ -360,6 +310,8 @@ def create_gradio_ui(model_files_list, initial_model_status):
                 result_task_display,
                 result_prompt_display,
                 result_text_output,
+                result_image_col,
+                result_text_col,
             ],
             api_name="query_image",
         )
@@ -385,6 +337,8 @@ def create_gradio_ui(model_files_list, initial_model_status):
                 result_task_display,
                 result_prompt_display,
                 result_text_output,
+                result_image_col,
+                result_text_col,
             ],
         )
 
@@ -404,6 +358,8 @@ def create_gradio_ui(model_files_list, initial_model_status):
                 result_task_display,
                 result_prompt_display,
                 result_text_output,
+                result_image_col,
+                result_text_col,
             ],
         )
 
@@ -423,6 +379,8 @@ def create_gradio_ui(model_files_list, initial_model_status):
                 result_task_display,
                 result_prompt_display,
                 result_text_output,
+                result_image_col,
+                result_text_col,
             ],
         )
     return demo

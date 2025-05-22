@@ -22,6 +22,9 @@ def placeholder_task_handler(
         tuple: (image, task_name, input_display, response)
     """
     # Basic UI validation for image (common to most tasks)
+    image_col_update = gr.update(scale=1)
+    text_col_update = gr.update(visible=False)
+
     if image is None:
         gr.Warning(f"Please upload an image for the {task_name_str} task.")
         return (
@@ -29,6 +32,8 @@ def placeholder_task_handler(
             task_name_str,
             str(task_input_value) if task_input_value else "N/A",
             f"Error: Image required for {task_name_str}.",
+            image_col_update,
+            text_col_update,
         )
 
     # Specific input validation (example)
@@ -41,6 +46,8 @@ def placeholder_task_handler(
             task_name_str,
             "No object specified.",
             f"Error: Object name required for {task_name_str}.",
+            image_col_update,
+            text_col_update,
         )
 
     response_message = f"{task_name_str} task is not yet implemented. "
@@ -52,4 +59,6 @@ def placeholder_task_handler(
         task_name_str,
         str(task_input_value) if task_input_value else "N/A",
         response_message,
+        image_col_update,
+        text_col_update,
     )

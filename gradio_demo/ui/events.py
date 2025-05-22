@@ -7,8 +7,10 @@ import gradio as gr
 from PIL import Image
 import hashlib
 
+from ..tasks.suggestions import get_question_suggestions
+
 from ..core.model_loader import load_or_get_cached_model
-from ..tasks.query import query_moondream_model, get_question_suggestions
+from ..tasks.query import query_moondream_model
 from ..tasks import placeholder_task_handler
 
 
@@ -172,6 +174,8 @@ def process_query_submission(
         tuple: (image, task_name, prompt, response)
     """
     task_name = "Query"
+    image_col_update = gr.update(scale=1)
+    text_col_update = gr.update(scale=7)
 
     # UI-level validation: Use gr.Warning for recoverable issues, actual call raises gr.Error
     if pil_image is None:
@@ -182,6 +186,8 @@ def process_query_submission(
             task_name,
             question_text or "N/A",
             "Error: Image required for query. Please upload an image.",
+            image_col_update,
+            text_col_update,
         )
     if not question_text or not question_text.strip():
         gr.Warning("Please enter a question for the query.")
@@ -190,6 +196,8 @@ def process_query_submission(
             task_name,
             "No question provided.",
             "Error: Question required for query. Please enter a question.",
+            image_col_update,
+            text_col_update,
         )
 
     try:
@@ -202,16 +210,16 @@ def process_query_submission(
             temperature_val,
             top_p_val,
         )
-        return pil_image, task_name, question_text, answer
+        return pil_image, task_name, question_text, answer, image_col_update, text_col_update
 
     except gr.Error as ge:
         # Gradio will display this error automatically.
         # We still return values to update the result fields appropriately, showing the error message.
         print(f"Gradio Error caught in process_query_submission: {ge}")
-        return pil_image, task_name, question_text, f"Operation Failed: {str(ge)}"
+        return pil_image, task_name, question_text, f"Operation Failed: {str(ge)}", image_col_update, text_col_update
     except Exception as e:
         # Catch any other unexpected errors in this wrapper that weren't converted to gr.Error
         error_msg = f"An unexpected error occurred during query processing: {str(e)}"
         print(f"ERROR: {error_msg}")
         # Optionally, re-raise as gr.Error or return error message
-        return pil_image, task_name, question_text, error_msg
+        return pil_image, task_name, question_text, error_msg, image_col_update, text_col_update
