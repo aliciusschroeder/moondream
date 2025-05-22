@@ -3,6 +3,8 @@ Defines the full Gradio UI layout and returns the interface demo.
 """
 
 import gradio as gr
+
+from ..utils.ui_utils import create_model_choices
 from ..core.config import APP_TITLE, APP_DESCRIPTION, PRIMARY_HUE, SECONDARY_HUE
 from ..moondream_imports import (
     DEFAULT_MAX_TOKENS,
@@ -47,7 +49,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
                     ):  # Collapsible sub-section for general settings
                         model_path_dropdown = gr.Dropdown(
                             label="Select Model File",
-                            choices=model_files_list,
+                            choices=create_model_choices(model_files_list),
                             value=model_files_list[0] if model_files_list else None,
                             info="Select a model file to load",
                         )
@@ -112,8 +114,14 @@ def create_gradio_ui(model_files_list, initial_model_status):
                         gr.Markdown(
                             "Caption generation. Settings from 'Text Generation Settings' will apply."
                         )
+                        caption_length_selector = gr.Dropdown(
+                            label="Caption Length",
+                            choices=["Short", "Medium", "Long"],
+                            value="Medium",
+                            info="Select the desired length of the caption.",
+                        )
                         submit_button_caption = gr.Button(
-                            "SUBMIT Caption (Coming Soon)", variant="secondary"
+                            "SUBMIT", variant="primary"
                         )
                         gr.Markdown("*Caption functionality is under development.*")
 
@@ -125,7 +133,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
                             label="Object to Point At", placeholder="e.g., the red car"
                         )
                         submit_button_point = gr.Button(
-                            "SUBMIT Point (Coming Soon)", variant="secondary"
+                            "SUBMIT", variant="primary"
                         )
                         gr.Markdown("*Point functionality is under development.*")
 
@@ -137,7 +145,7 @@ def create_gradio_ui(model_files_list, initial_model_status):
                             label="Object to Detect", placeholder="e.g., cat, table"
                         )
                         submit_button_detect = gr.Button(
-                            "SUBMIT Detect (Coming Soon)", variant="secondary"
+                            "SUBMIT", variant="primary"
                         )
                         gr.Markdown("*Detect functionality is under development.*")
 
