@@ -1,11 +1,10 @@
 import torch
 import torch.nn as nn
-
 from torch.nn import functional as F
 
-from .layers import layer_norm, mlp, QuantizedLinear
-from .rope import apply_rotary_emb, precompute_freqs_cis
 from .config import TextConfig
+from .layers import QuantizedLinear, layer_norm, mlp
+from .rope import apply_rotary_emb, precompute_freqs_cis
 
 
 def text_encoder(input_ids: torch.Tensor, w: nn.Module):

@@ -1,19 +1,25 @@
+import random
+from dataclasses import dataclass
+from typing import Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
+
 import torch
 import torch.nn as nn
-import random
-
-from typing import Literal, Tuple, TypedDict, Union, Dict, Any, Optional, List
 from PIL import Image
 from dataclasses import dataclass
 from tokenizers import Tokenizer
 
 from .config import MoondreamConfig
 from .image_crops import reconstruct_from_crops
-from .vision import vision_encoder, vision_projection, prepare_crops, build_vision_model
-from .text import build_text_model, text_encoder, lm_head, text_decoder
-from .region import decode_coordinate, encode_coordinate, decode_size, encode_size
 from .layers import QuantizedLinear
+from .region import decode_coordinate, decode_size, encode_coordinate, encode_size
+from .text import build_text_model, lm_head, text_encoder, text_decoder
 from .utils import remove_outlier_points
+from .vision import (
+    build_vision_model,
+    prepare_crops,
+    vision_encoder,
+    vision_projection,
+)
 
 
 TextSamplingSettings = TypedDict(

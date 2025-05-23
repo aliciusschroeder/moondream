@@ -1,9 +1,9 @@
+from contextlib import contextmanager
+from typing import Callable, List
+
 import safetensors
 import torch
 import torch.nn as nn
-
-from contextlib import contextmanager
-from typing import Callable, List
 
 
 @contextmanager
