@@ -9,6 +9,16 @@ from .events_suggestions import (
     question_suggestions_event,
     handle_suggestion_click,
 )
+from .events_tasks import (
+    process_caption_submission,
+    process_point_submission,
+    process_query_submission,
+    process_detect_submission,
+    process_detect_all_submission,
+)
+from .events import (
+        handle_model_selection_change,
+    )
 from ..utils.ui_utils import create_model_choices
 from ..core.config import APP_TITLE, APP_DESCRIPTION, PRIMARY_HUE, SECONDARY_HUE
 from ..moondream_imports import (
@@ -30,11 +40,7 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
     Returns:
         gr.Blocks: The configured Gradio interface
     """
-    from .events import (
-        handle_model_selection_change,
-    )
-    from ..tasks import placeholder_task_handler
-
+    logger.info("Creating Gradio UI...")
     # Create the Gradio Blocks interface
     with gr.Blocks(
         theme=gr.themes.Soft(primary_hue=PRIMARY_HUE, secondary_hue=SECONDARY_HUE)
@@ -42,8 +48,14 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
         gr.Markdown(APP_DESCRIPTION)
 
         # Hidden state variables for tracking
-        last_processed_image = gr.State(None)  # Store hash of last processed image
+        last_processed_image = gr.State({
+            "query_tab": None,
+            "point_tab": None,
+            "detect_tab": None,
+        })  # Store hash of last processed image
         current_tab = gr.State("query_tab")  # Track current tab
+        point_tab_id = gr.State("point_tab")
+        detect_tab_id = gr.State("detect_tab")
 
         with gr.Row():  # Main layout: Left column for Image & Settings, Right for Tasks & Results
             # --- Left Column (scale=1) ---
@@ -123,7 +135,6 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                                 "Suggestion 3", variant="secondary", visible=False
                             )
                         submit_button_point = gr.Button("SUBMIT", variant="primary")
-                        gr.Markdown("*Point functionality is under development.*")
 
                     with gr.TabItem("👁️ Detect", id="detect_tab") as detect_tab:
                         gr.Markdown(
@@ -148,7 +159,14 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                                 "Suggestion 3", variant="secondary", visible=False
                             )
                         submit_button_detect = gr.Button("SUBMIT", variant="primary")
-                        gr.Markdown("*Detect functionality is under development.*")
+
+                    with gr.TabItem("🔍 Detect All", id="detect_all_tab") as detect_all_tab:
+                        gr.Markdown(
+                            "Detect all objects in the image. This may take a while."
+                        )
+                        submit_button_detect_all = gr.Button(
+                            "SUBMIT", variant="primary"
+                        )
 
                 # Bottom-Center/Right: RESULT area (Sketch: IMAGE | TASK | RESULT TEXT)
 
@@ -177,9 +195,6 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                 )
 
         with gr.Sidebar():
-            # with gr.Accordion(
-            #         "SETTINGS", open=True
-            #     ):  # Main accordion for all settings
             with gr.Accordion(
                 "General", open=True
             ):  # Collapsible sub-section for general settings
@@ -194,9 +209,7 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                     "Load Model", variant="primary", visible=False if model_loaded else True
                 )
 
-            with gr.Accordion(
-                "Text Generation Settings", open=False
-            ):  # Collapsible sub-section
+            with gr.Accordion("Text Generation", open=True):  # Collapsible sub-section
                 max_tokens_slider = gr.Slider(
                     minimum=1,
                     maximum=2048,
@@ -222,7 +235,7 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                     info="Nucleus sampling parameter.",
                 )
 
-            with gr.Accordion("Object Settings", open=False):  # Collapsible sub-section
+            with gr.Accordion("Object Detection", open=True):  # Collapsible sub-section
                 max_objects_slider = gr.Slider(
                     minimum=1,
                     maximum=100,
@@ -233,6 +246,8 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                 )
 
         # --- Event Handlers ---
+        logger.info("Setting up event handlers...")
+        # Model Selection
         model_path_dropdown.change(
             fn=handle_model_selection_change,
             inputs=[model_path_dropdown],
@@ -265,7 +280,13 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
             inputs=None,
             outputs=[current_tab],
         )
+        detect_all_tab.select(
+            lambda: "detect_all_tab",
+            inputs=None,
+            outputs=[current_tab],
+        )
 
+        # Suggestion Trigger on Tab Change
         current_tab.change(
             fn=question_suggestions_event,
             inputs=[
@@ -275,7 +296,7 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                 current_tab,
             ],
             outputs=[
-                suggestion_status,
+                query_suggestion_status,
                 query_suggestion_btn1,
                 query_suggestion_btn2,
                 query_suggestion_btn3,
@@ -325,7 +346,7 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                 current_tab,
             ],
             outputs=[
-                suggestion_status,
+                query_suggestion_status,
                 query_suggestion_btn1,
                 query_suggestion_btn2,
                 query_suggestion_btn3,
@@ -500,4 +521,23 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                 result_text_col,
             ],
         )
+
+        # Detect All task handler
+        submit_button_detect_all.click(
+            fn=process_detect_all_submission,
+            inputs=[
+                model_path_dropdown,
+                main_image_uploader,
+                max_objects_slider,
+            ],
+            outputs=[
+                result_image_display,
+                result_task_display,
+                result_prompt_display,
+                result_text_output,
+                result_image_col,
+                result_text_col,
+            ],
+        )
+
     return demo
