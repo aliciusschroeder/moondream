@@ -19,6 +19,24 @@ def select_tiling(
 ) -> tuple[int, int]:
     """
     Determine the optimal number of tiles to cover an image with overlapping crops.
+
+    This function calculates the number of tiles in height and width dimensions
+    based on the provided image dimensions, crop size, and maximum number of crops.
+    It ensures that the number of tiles is sufficient to cover the image while
+    adhering to the maximum crop limit. The function also ensures that the number
+    of tiles in each dimension is at least 1, and that the crop size is not larger
+    than the image dimensions.
+
+    Args:
+        height (int): Height of the image in pixels
+        width (int): Width of the image in pixels
+        crop_size (int): Size of each crop in pixels
+        max_crops (int): Maximum number of crops allowed
+
+    Returns:
+        tuple[int, int]: A tuple containing the number of tiles in height and width
+            dimensions. The first element is the number of tiles in height, and the
+            second element is the number of tiles in width.
     """
     if height <= crop_size or width <= crop_size:
         return (1, 1)
