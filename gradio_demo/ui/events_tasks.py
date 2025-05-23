@@ -58,7 +58,7 @@ def process_caption_submission(
             max_tokens_val,
             temperature_val,
             top_p_val,
-        )
+        ).strip()
         # Resize pil_image proportionally to w=320 to shorten the display time
         pil_image.thumbnail((320, 320))
         return (
@@ -136,7 +136,7 @@ def process_query_submission(
             max_tokens_val,
             temperature_val,
             top_p_val,
-        )
+        ).strip()
         pil_image.thumbnail((320, 320))
         return (
             pil_image,
