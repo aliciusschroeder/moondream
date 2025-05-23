@@ -3,8 +3,7 @@ Task initialization and management module.
 """
 
 from .query import query_moondream_model
-from ..core.placeholder_tasks import placeholder_task_handler
-from .suggestions import get_question_suggestions
+from .suggestions import get_question_suggestions, get_object_suggestions
 from .caption import caption_image
 
 __all__ = [
