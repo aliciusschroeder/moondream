@@ -17,6 +17,7 @@ from .events_tasks import (
     process_detect_all_submission,
 )
 from .events import (
+    handle_detectall_max_tiles_change,
     handle_model_selection_change,
 )
 from ..utils.ui_utils import create_model_choices
@@ -167,6 +168,23 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                     ) as detect_all_tab:
                         gr.Markdown(
                             "Detect all objects in the image. This may take a while."
+                        )
+                        in_depth_checkbox = gr.Checkbox(
+                            label="In-depth analysis",
+                            value=True,
+                            info="Enable in-depth analysis for better detection.",
+                        )
+                        max_tiles_slider = gr.Slider(
+                            minimum=2,
+                            maximum=100,
+                            value=12,
+                            step=1,
+                            label="Max Tiles",
+                            info="Maximum number of tiles for detection.",
+                            visible=True,
+                        )
+                        actual_tiles_indicator = gr.Markdown(
+                            "Upload an image to see the number of tiles.",
                         )
                         submit_button_detect_all = gr.Button(
                             "SUBMIT", variant="primary"
@@ -445,6 +463,20 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
             outputs=[object_textbox_detect],
         )
 
+        # Elements of "Detect All"
+        in_depth_checkbox.change(
+            fn=lambda x: (gr.update(visible=x), gr.update(visible=x)),
+            inputs=[in_depth_checkbox],
+            outputs=[max_tiles_slider, actual_tiles_indicator],
+        )
+
+        # Update max tiles indicator
+        max_tiles_slider.change(
+            fn=handle_detectall_max_tiles_change,
+            inputs=[main_image_uploader, in_depth_checkbox, max_tiles_slider],
+            outputs=[actual_tiles_indicator],
+        )
+
         # Submission Handlers
         # Query task handler
         submit_button_query.click(
@@ -534,6 +566,8 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                 model_path_dropdown,
                 main_image_uploader,
                 max_objects_slider,
+                in_depth_checkbox,
+                max_tiles_slider,
             ],
             outputs=[
                 result_image_display,

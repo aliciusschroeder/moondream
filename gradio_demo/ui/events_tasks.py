@@ -273,6 +273,8 @@ def process_detect_all_submission(
     model_path_selected: str,
     pil_image: Image.Image,
     max_objects: int,
+    in_depth: bool = False,
+    max_tiles: int = 12,
 ):
     image_col_update = gr.update(scale=1, visible=True)
     text_col_update = gr.update(visible=False)
@@ -293,9 +295,11 @@ def process_detect_all_submission(
         # Get coordinates and sizes of detected objects
 
         objects, pil_image = detect_all_objects(
-            model_path_selected,
-            pil_image,
-            max_objects,
+            model_path_selected=model_path_selected,
+            pil_image=pil_image,
+            max_objects=max_objects,
+            in_depth=in_depth,
+            max_tiles=max_tiles,
         )
         pil_image.thumbnail((1500, 1500))
         # Return the image with rectangles

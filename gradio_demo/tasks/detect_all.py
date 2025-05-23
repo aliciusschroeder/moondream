@@ -5,12 +5,42 @@ from PIL import Image, ImageDraw
 
 from .detect import detect_objects
 from ..core.model_loader import load_or_get_cached_model
+from moondream.torch.image_crops import select_tiling
+
+CROP_SIZE = 378
+DEFAULT_MAX_TILES = 12
+
+def split_image_into_tiles(image: Image.Image, max_tiles: int = DEFAULT_MAX_TILES) -> list[Image.Image]:
+    h_tiles, w_tiles = select_tiling(image.height, image.width, CROP_SIZE, max_tiles)
+    print(f"Splitting image into {w_tiles}x{h_tiles} (WxH) tiles.")
+
+    width, height = image.size
+    tile_width = width // w_tiles
+    tile_height = height // h_tiles
+
+    # Adjust the step to slightly overlap if not evenly divisible
+    step_x = (width - tile_width) // (w_tiles - 1) if w_tiles > 1 else 0
+    step_y = (height - tile_height) // (h_tiles - 1) if h_tiles > 1 else 0
+
+    tiles = []
+    for i in range(h_tiles):
+        for j in range(w_tiles):
+            left = min(j * step_x, width - tile_width)
+            upper = min(i * step_y, height - tile_height)
+            right = left + tile_width
+            lower = upper + tile_height
+            tile = image.crop((left, upper, right, lower))
+            tiles.append(tile)
+
+    return tiles
 
 
 def detect_all_objects(
     model_path_selected: str,
     pil_image: Image.Image,
     max_objects: int,
+    in_depth: bool = True,
+    max_tiles: int = DEFAULT_MAX_TILES,
 ):
     """
     Query the Moondream model with an image and object label.
@@ -51,80 +81,110 @@ def detect_all_objects(
             "top_p": 0.3,
         }
 
-        result_dict = model.query(
-            image=pil_image,
-            question=objects_query,
-            stream=False,
-            settings=text_sampling_settings,
-        )
+        objects = []
+        tiles = [pil_image]
+        if in_depth:
+            tiles.extend(split_image_into_tiles(pil_image, max_tiles))
 
-        answer = result_dict.get("answer", "[]")
-        print(f"Model found objects: '{answer}'")
+        # Process each tile separately
+        for tile in tiles:
+            # Ensure the tile is in RGB mode
+            if tile.mode != "RGB":
+                tile = tile.convert("RGB")
+            # Resize the tile to a fixed size
+            tile = tile.resize((CROP_SIZE, CROP_SIZE), Image.LANCZOS)
 
-        # Parse JSON response, handle potential formatting issues
+            # Process the tile with the model
+            result_dict = model.query(
+                image=tile,
+                question=objects_query,
+                stream=False,
+                settings=text_sampling_settings,
+            )
+
+            answer = result_dict.get("answer", "[]")
+            print(f"Model found objects: '{answer}'")
+
+            # Parse JSON response, handle potential formatting issues
+            try:
+                content = json.loads(answer)
+                if isinstance(content, list):
+                    objects.extend([item.strip().lower() for item in content if isinstance(item, str)])
+                else:
+                    print("Answer was parsed but not a list:", answer)
+                continue
+            except json.JSONDecodeError:
+                # If the response is not a valid JSON, handle it gracefully
+                print(f"Failed to parse JSON response: {answer}")
+                continue
+            except gr.Error as ge:
+                print("Error during object detection:", str(ge))
+                continue
+        full_count = len(objects)
+        # Remove duplicates
+        objects = list(set(objects))
+        print(f"Found {full_count} objects, reduced to {len(objects)} unique objects:")
+        print("\n".join(objects))
+
         try:
             # Try to parse the full response as JSON
-            objects = json.loads(answer)
             detections = []
-            if isinstance(objects, list):
-                for obj in objects:
-                    try:
-                        points, _ = detect_objects(
-                            model_path_selected,
-                            pil_image,
-                            obj,
-                            max_objects,
-                            return_just_points=True,
-                        )
-                        for point in points:
-                            detections.append((obj, point))
-                            print("Detected object:", obj, "at point:", point)
-                    except gr.Error as ge:
-                        print("Error during object detection:", str(ge))
-                        continue
-                    except Exception as e:
-                        print("Unexpected error during object detection:", str(e))
-                        continue
-
-                print("Final detections:", detections)
-
-                draw = ImageDraw.Draw(pil_image)
-                bounding_box_width = max(pil_image.width // 700, 1)
-                text_margin_left = pil_image.width / 470
-                past_detection = ""
-                current_color = (
-                    random.randint(0, 255),
-                    random.randint(0, 255),
-                    random.randint(0, 255),
-                )
-                for obj, point in detections:
-                    if obj != past_detection:
-                        current_color = (
-                            random.randint(0, 255),
-                            random.randint(0, 255),
-                            random.randint(0, 255),
-                        )
-                        past_detection = obj
-                    x1, y1, x2, y2 = (
-                        point["x_min"] * pil_image.width,
-                        point["y_min"] * pil_image.height,
-                        point["x_max"] * pil_image.width,
-                        point["y_max"] * pil_image.height,
-                    )
-                    draw.rectangle(
-                        [x1, y1, x2, y2],
-                        outline=current_color,
-                        width=bounding_box_width,
-                    )
-                    font_size = min(max(int((x2 - x1) / 10), 6), 64)
-                    draw.text(
-                        (x1 + text_margin_left, y1),
+            for obj in objects:
+                try:
+                    points, _ = detect_objects(
+                        model_path_selected,
+                        pil_image,
                         obj,
-                        fill=current_color,
-                        font_size=font_size,
+                        max_objects,
+                        return_just_points=True,
                     )
-            else:
-                print("Answer was parsed but not a list:", answer)
+                    for point in points:
+                        detections.append((obj, point))
+                        print("Detected object:", obj, "at point:", point)
+                except gr.Error as ge:
+                    print("Error during object detection:", str(ge))
+                    continue
+                except Exception as e:
+                    print("Unexpected error during object detection:", str(e))
+                    continue
+
+            print("Final detections:", detections)
+
+            draw = ImageDraw.Draw(pil_image)
+            bounding_box_width = max(pil_image.width // 700, 1)
+            text_margin_left = pil_image.width / 470
+            past_detection = ""
+            current_color = (
+                random.randint(0, 255),
+                random.randint(0, 255),
+                random.randint(0, 255),
+            )
+            for obj, point in detections:
+                if obj != past_detection:
+                    current_color = (
+                        random.randint(0, 255),
+                        random.randint(0, 255),
+                        random.randint(0, 255),
+                    )
+                    past_detection = obj
+                x1, y1, x2, y2 = (
+                    point["x_min"] * pil_image.width,
+                    point["y_min"] * pil_image.height,
+                    point["x_max"] * pil_image.width,
+                    point["y_max"] * pil_image.height,
+                )
+                draw.rectangle(
+                    [x1, y1, x2, y2],
+                    outline=current_color,
+                    width=bounding_box_width,
+                )
+                font_size = min(max(int((x2 - x1) / 10), 6), 64)
+                draw.text(
+                    (x1 + text_margin_left, y1),
+                    obj,
+                    fill=current_color,
+                    font_size=font_size,
+                )
         except json.JSONDecodeError:
             # If the response is not a valid JSON, handle it gracefully
             print(f"ERROR: Failed to parse JSON response: {answer}")

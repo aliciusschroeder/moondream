@@ -6,6 +6,8 @@ import os
 import gradio as gr
 from PIL import Image
 
+from moondream.torch.image_crops import select_tiling
+
 
 from ..core.model_loader import load_or_get_cached_model
 
@@ -88,3 +90,22 @@ def check_submission(
         )
 
     return None
+
+def handle_detectall_max_tiles_change(
+        image: Image.Image,
+        in_depth: bool,
+        max_tiles: int,
+):
+    if image is None:
+        return gr.update()
+    if not in_depth:
+        actual_tiles = 1
+    else:
+        tiling = select_tiling(
+            image.height,
+            image.width,
+            378, # TODO: Define this constant in a config file
+            max_tiles,
+        )
+        actual_tiles = tiling[0] * tiling[1]
+    return f"Image will be split into **{actual_tiles}** tiles for processing."

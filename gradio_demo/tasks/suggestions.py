@@ -1,11 +1,9 @@
-from gradio_demo.core.model_loader import load_or_get_cached_model
-
+import json
 
 import gradio as gr
 from PIL import Image
 
-
-import json
+from ..core.model_loader import load_or_get_cached_model
 
 
 def get_question_suggestions(model_path_selected: str, pil_image: Image.Image):
