@@ -118,9 +118,7 @@ def initialize_model(model_dir: str, skip_model_load: bool = False):
         return model_files_list, initial_model_load_status_message
     else:
         initial_model_load_status_message = f"{len(model_files_list)} model available"
-        print(
-            f"Found {len(model_files_list)} model files in '{model_dir}'."
-        )
+        print(f"Found {len(model_files_list)} model files in '{model_dir}'.")
 
     if skip_model_load:
         return model_files_list, initial_model_load_status_message, model_loaded

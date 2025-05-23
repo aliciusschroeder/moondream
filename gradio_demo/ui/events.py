@@ -25,14 +25,20 @@ def handle_model_selection_change(selected_model_path: str):
         yield "⚠️ No model selected. Please choose a model.", gr.update()
         return
 
-    yield f"⏳ Loading model: {os.path.basename(selected_model_path)}...", gr.update(visible=True)
+    yield f"⏳ Loading model: {os.path.basename(selected_model_path)}...", gr.update(
+        visible=True
+    )
     try:
         load_or_get_cached_model(selected_model_path)
-        yield f"✅ Model '{os.path.basename(selected_model_path)}' loaded successfully.", gr.update(visible=False)
+        yield f"✅ Model '{os.path.basename(selected_model_path)}' loaded successfully.", gr.update(
+            visible=False
+        )
     except gr.Error as ge:
         yield f"❌ Error loading model: {str(ge)}", gr.update(visible=True)
     except Exception as e:
-        yield f"❌ Failed to load model '{os.path.basename(selected_model_path)}': An unexpected error occurred: {str(e)}", gr.update(visible=True)
+        yield f"❌ Failed to load model '{os.path.basename(selected_model_path)}': An unexpected error occurred: {str(e)}", gr.update(
+            visible=True
+        )
 
 
 def handle_submission_error(

@@ -7,7 +7,6 @@ from .detect import detect_objects
 from ..core.model_loader import load_or_get_cached_model
 
 
-
 def detect_all_objects(
     model_path_selected: str,
     pil_image: Image.Image,
@@ -35,7 +34,6 @@ def detect_all_objects(
         )
     if pil_image is None:
         raise gr.Error("No image provided for query. Please upload an image.")
-
 
     try:
         model = load_or_get_cached_model(model_path_selected)
@@ -94,10 +92,18 @@ def detect_all_objects(
                 bounding_box_width = max(pil_image.width // 700, 1)
                 text_margin_left = pil_image.width / 470
                 past_detection = ""
-                current_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+                current_color = (
+                    random.randint(0, 255),
+                    random.randint(0, 255),
+                    random.randint(0, 255),
+                )
                 for obj, point in detections:
                     if obj != past_detection:
-                        current_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+                        current_color = (
+                            random.randint(0, 255),
+                            random.randint(0, 255),
+                            random.randint(0, 255),
+                        )
                         past_detection = obj
                     x1, y1, x2, y2 = (
                         point["x_min"] * pil_image.width,

@@ -22,7 +22,9 @@ def main():
     log_startup_info(logger, get_config_dict())
 
     # Initialize model
-    model_files_list, initial_model_status, model_loaded = initialize_model(MODEL_DIR, skip_model_load=SKIP_MODEL_LOAD)
+    model_files_list, initial_model_status, model_loaded = initialize_model(
+        MODEL_DIR, skip_model_load=SKIP_MODEL_LOAD
+    )
 
     # Log model information
     log_model_info(logger, model_files_list)
@@ -33,7 +35,9 @@ def main():
         )
 
     # Create Gradio interface
-    demo = create_gradio_ui(model_files_list, initial_model_status, model_loaded, logger)
+    demo = create_gradio_ui(
+        model_files_list, initial_model_status, model_loaded, logger
+    )
 
     # Launch the interface
     logger.info("Launching Gradio interface...")

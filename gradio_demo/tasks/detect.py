@@ -79,7 +79,12 @@ def detect_objects(
             # Calculate font size based on image size and bounding box size
             font_size = min(max(int((x2 - x1) / 10), 6), 64)
 
-            draw.text((x1 + text_margin_left, y1), object_label, fill="red", font_size=font_size)
+            draw.text(
+                (x1 + text_margin_left, y1),
+                object_label,
+                fill="red",
+                font_size=font_size,
+            )
 
         return objects, pil_image
 

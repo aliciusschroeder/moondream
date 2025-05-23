@@ -17,8 +17,8 @@ from .events_tasks import (
     process_detect_all_submission,
 )
 from .events import (
-        handle_model_selection_change,
-    )
+    handle_model_selection_change,
+)
 from ..utils.ui_utils import create_model_choices
 from ..core.config import APP_TITLE, APP_DESCRIPTION, PRIMARY_HUE, SECONDARY_HUE
 from ..moondream_imports import (
@@ -48,11 +48,13 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
         gr.Markdown(APP_DESCRIPTION)
 
         # Hidden state variables for tracking
-        last_processed_image = gr.State({
-            "query_tab": None,
-            "point_tab": None,
-            "detect_tab": None,
-        })  # Store hash of last processed image
+        last_processed_image = gr.State(
+            {
+                "query_tab": None,
+                "point_tab": None,
+                "detect_tab": None,
+            }
+        )  # Store hash of last processed image
         current_tab = gr.State("query_tab")  # Track current tab
         point_tab_id = gr.State("point_tab")
         detect_tab_id = gr.State("detect_tab")
@@ -160,7 +162,9 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                             )
                         submit_button_detect = gr.Button("SUBMIT", variant="primary")
 
-                    with gr.TabItem("🔍 Detect All", id="detect_all_tab") as detect_all_tab:
+                    with gr.TabItem(
+                        "🔍 Detect All", id="detect_all_tab"
+                    ) as detect_all_tab:
                         gr.Markdown(
                             "Detect all objects in the image. This may take a while."
                         )
@@ -206,7 +210,9 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                 )
                 model_load_status_md = gr.Markdown(initial_model_status)
                 model_load_button = gr.Button(
-                    "Load Model", variant="primary", visible=False if model_loaded else True
+                    "Load Model",
+                    variant="primary",
+                    visible=False if model_loaded else True,
                 )
 
             with gr.Accordion("Text Generation", open=True):  # Collapsible sub-section
@@ -438,7 +444,6 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
             inputs=[detect_suggestion_btn3],
             outputs=[object_textbox_detect],
         )
-
 
         # Submission Handlers
         # Query task handler
