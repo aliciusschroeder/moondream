@@ -8,6 +8,19 @@ from .rope import apply_rotary_emb, precompute_freqs_cis
 
 
 def text_encoder(input_ids: torch.Tensor, w: nn.Module):
+    """
+    Encode input token IDs into embeddings using learned word token embeddings.
+    
+    This is the first step in processing text tokens, converting discrete token IDs
+    into dense vector representations that the model can work with.
+    
+    Args:
+        input_ids: Tensor of shape (batch_size, seq_len) containing token IDs
+        w: Module containing the word token embeddings (wte parameter)
+        
+    Returns:
+        Tensor of shape (batch_size, seq_len, d_model) containing token embeddings
+    """
     return F.embedding(input_ids, w.wte)
 
 
@@ -21,6 +34,28 @@ def attn(
     n_kv_heads: int,
     position_ids: torch.Tensor,
 ):
+    """
+    Multi-head attention with KV caching and grouped query attention (GQA) support.
+    
+    This implements the core attention mechanism used in transformer models, with several
+    optimizations:
+    - KV caching for efficient autoregressive generation
+    - Grouped Query Attention (GQA) where key/value heads can be fewer than query heads
+    - Rotary positional embeddings (RoPE) for position encoding
+    
+    Args:
+        x: Input tensor of shape (batch_size, seq_len, d_model)
+        w: Attention weights module containing qkv projection and output projection
+        freqs_cis: Precomputed frequencies for rotary positional embeddings
+        kv_cache: Key-value cache for efficient generation (None during training)
+        attn_mask: Attention mask to prevent attending to certain positions
+        n_heads: Number of attention heads for queries
+        n_kv_heads: Number of attention heads for keys/values (can be < n_heads for GQA)
+        position_ids: Position indices for each token in the sequence
+        
+    Returns:
+        Tensor of shape (batch_size, seq_len, d_model) after attention and projection
+    """
     bsz, q_len, d_model = x.shape
     head_dim = d_model // n_heads
 
@@ -56,6 +91,24 @@ def _attn(
     n_heads: int,
     n_kv_heads: int,
 ):
+    """
+    Simplified attention function for training/inference without KV caching.
+    
+    This is a streamlined version of the attention mechanism that doesn't use
+    KV caching, making it suitable for training where all tokens are processed
+    at once rather than autoregressively.
+    
+    Args:
+        x: Input tensor of shape (batch_size, seq_len, d_model)
+        w: Attention weights containing qkv and proj layers
+        freqs_cis: Precomputed rotary positional embedding frequencies
+        attn_mask: Attention mask for preventing attention to certain positions
+        n_heads: Number of query attention heads
+        n_kv_heads: Number of key/value attention heads (for GQA)
+        
+    Returns:
+        Tensor of shape (batch_size, seq_len, d_model) after attention
+    """
     bsz, q_len, d_model = x.shape
     head_dim = d_model // n_heads
     pos = 0
@@ -94,7 +147,27 @@ def _produce_hidden(
     attention_mask: torch.Tensor = None,
 ):
     """
-    Process inputs with attention_mask support
+    Process input embeddings through transformer blocks to produce hidden states.
+    
+    This function runs the input embeddings through all transformer blocks, applying
+    layer normalization, attention, and MLP layers at each step. It supports custom
+    attention masks for controlling which tokens can attend to each other.
+    
+    The function implements the standard transformer architecture with pre-layer
+    normalization and residual connections. The attention mask allows for flexible
+    attention patterns beyond the default causal masking.
+    
+    Args:
+        inputs_embeds: Input token embeddings of shape (batch_size, seq_len, d_model)
+        w: Transformer weights module containing blocks and frequency embeddings
+        config: Text model configuration containing architectural parameters
+        attention_mask: Optional mask of shape (batch_size, seq_len) where 1 = attend,
+                       0 = ignore. If None, uses default causal masking with special
+                       handling for sequences longer than 730 tokens.
+                       
+    Returns:
+        Tensor of shape (batch_size, seq_len, d_model) containing final hidden states
+        after processing through all transformer blocks
     """
     hidden_BTC = inputs_embeds
 
@@ -137,6 +210,23 @@ def text_decoder(
     position_ids: torch.Tensor,
     config: TextConfig,
 ):
+    """
+    Decode hidden states through transformer blocks with KV caching for generation.
+    
+    This function is optimized for autoregressive text generation, where tokens are
+    generated one at a time. It uses KV caching to avoid recomputing attention keys
+    and values for previously generated tokens, significantly speeding up inference.
+    
+    Args:
+        x: Input hidden states of shape (batch_size, seq_len, d_model)
+        w: Transformer weights module containing blocks with KV caches
+        attn_mask: Attention mask to control which positions can be attended to
+        position_ids: Position indices for each token in the sequence
+        config: Text model configuration with architectural parameters
+        
+    Returns:
+        Tensor of shape (batch_size, seq_len, d_model) containing processed hidden states
+    """
     for i, block in enumerate(w.blocks):
         l_in = layer_norm(x, block.ln)
         l_attn = attn(
@@ -156,6 +246,21 @@ def text_decoder(
 
 
 def lm_head(hidden_BTC: torch.Tensor, w: nn.Module):
+    """
+    Apply language modeling head to generate logits for the last token.
+    
+    This function extracts the final hidden state (last token) from the sequence,
+    applies layer normalization, and projects it through the language modeling head
+    to produce vocabulary logits. This is used during autoregressive generation
+    where only the next token prediction is needed.
+    
+    Args:
+        hidden_BTC: Hidden states of shape (batch_size, seq_len, d_model)
+        w: Module containing post_ln (layer norm) and lm_head (linear projection)
+        
+    Returns:
+        Tensor of shape (batch_size, vocab_size) containing logits for the last token
+    """
     hidden_BC = hidden_BTC[:, -1, :]
     hidden_BC = layer_norm(hidden_BC, w.post_ln)
     logits = w.lm_head(hidden_BC)
@@ -163,12 +268,56 @@ def lm_head(hidden_BTC: torch.Tensor, w: nn.Module):
 
 
 def _lm_head(hidden_BTC: torch.Tensor, w: nn.Module):
+    """
+    Apply language modeling head to generate logits for all tokens in sequence.
+    
+    Unlike lm_head() which only processes the last token, this function applies
+    layer normalization and the language modeling head to all tokens in the sequence.
+    This is typically used during training where loss is computed across all positions,
+    or when you need logits for the entire sequence.
+    
+    Args:
+        hidden_BTC: Hidden states of shape (batch_size, seq_len, d_model)
+        w: Module containing post_ln (layer norm) and lm_head (linear projection)
+        
+    Returns:
+        Tensor of shape (batch_size, seq_len, vocab_size) containing logits for all tokens
+    """
     hidden_BTC = layer_norm(hidden_BTC, w.post_ln)
     logits = w.lm_head(hidden_BTC)
     return logits
 
 
 def build_text_model(config: TextConfig, dtype: torch.dtype) -> nn.Module:
+    """
+    Build a complete text transformer model from configuration.
+    
+    This function constructs the full transformer architecture including:
+    - Word token embeddings (wte)
+    - Multiple transformer blocks with attention and MLP layers
+    - Post-layer normalization and language modeling head
+    - Rotary positional embedding frequencies
+    
+    The model supports several advanced features:
+    - Grouped Query Attention (GQA) where n_kv_heads can be less than n_heads
+    - Optional quantization for memory efficiency
+    - Rotary positional embeddings for better position encoding
+    
+    Args:
+        config: TextConfig object containing model hyperparameters like:
+            - dim: Model dimension (d_model)
+            - n_layers: Number of transformer blocks
+            - n_heads: Number of attention heads for queries
+            - n_kv_heads: Number of attention heads for keys/values (for GQA)
+            - ff_dim: Feed-forward network hidden dimension
+            - vocab_size: Size of the vocabulary
+            - max_context: Maximum sequence length for positional embeddings
+            - group_size: Quantization group size (None for no quantization)
+        dtype: PyTorch data type for model parameters (e.g., torch.float16, torch.bfloat16)
+        
+    Returns:
+        nn.Module: Complete transformer model ready for training or inference
+    """
     qkv_dim = int(config.dim * (1 + 2 * config.n_kv_heads / config.n_heads))
     linear_cls = QuantizedLinear if config.group_size is not None else nn.Linear
 

@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
 import torch
 import torch.nn as nn
 from PIL import Image
-from dataclasses import dataclass
 from tokenizers import Tokenizer
 
 from .config import MoondreamConfig
@@ -70,6 +69,20 @@ class KVCache(nn.Module):
 
 
 class MoondreamModel(nn.Module):
+    """
+    Moondream vision-language model for multimodal understanding.
+    
+    This model combines vision and text encoders to perform various tasks including:
+    - Image captioning
+    - Visual question answering
+    - Object detection and pointing
+    - Gaze detection
+    
+    Args:
+        config: MoondreamConfig containing model configuration
+        dtype: Data type for model parameters (default: torch.bfloat16)
+        setup_caches: Whether to initialize KV caches (default: True)
+    """
 
     def __init__(
         self, config: MoondreamConfig, dtype=torch.bfloat16, setup_caches=True
@@ -143,6 +156,7 @@ class MoondreamModel(nn.Module):
             self._setup_caches()
 
     def _setup_caches(self):
+        """Initialize KV caches for all text model blocks."""
         c = self.config.text
         for b in self.text.blocks:
             b.kv_cache = KVCache(
@@ -156,25 +170,36 @@ class MoondreamModel(nn.Module):
 
     @property
     def device(self):
+        """Get the device of the model."""
         return self.vision.pos_emb.device
 
     def _vis_enc(self, x: torch.Tensor):
+        """Encode visual features from image crops."""
         return vision_encoder(x, self.vision, self.config.vision)
 
     def _vis_proj(self, g: torch.Tensor, r: torch.Tensor):
+        """Project global and regional visual features."""
         return vision_projection(g, r, self.vision, self.config.vision)
 
     def _prefill(self, x: torch.Tensor, attn_mask: torch.Tensor, pos_ids: torch.Tensor):
+        """Prefill the text decoder with input embeddings."""
         return text_decoder(x, self.text, attn_mask, pos_ids, self.config.text)
 
     def _decode_one_tok(
         self, x: torch.Tensor, attn_mask: torch.Tensor, pos_ids: torch.Tensor
     ):
+        """Decode a single token and return logits and hidden states."""
         hidden = text_decoder(x, self.text, attn_mask, pos_ids, self.config.text)
         logits = lm_head(hidden, self.text)
         return logits, hidden
 
     def compile(self):
+        """
+        Compile the model for optimized inference.
+        
+        This method unpacks quantized linear layers and applies torch.compile
+        to various components for improved performance.
+        """
         for module in self.modules():
             if isinstance(module, QuantizedLinear):
                 module.unpack()
@@ -187,6 +212,15 @@ class MoondreamModel(nn.Module):
         )
 
     def _run_vision_encoder(self, image: Image.Image) -> torch.Tensor:
+        """
+        Run vision encoder on an image to extract visual features.
+        
+        Args:
+            image: PIL Image to process
+            
+        Returns:
+            Projected visual features tensor
+        """
         all_crops, tiling = prepare_crops(image, self.config.vision, device=self.device)
 
         torch._dynamo.mark_dynamic(all_crops, 0)
@@ -211,6 +245,18 @@ class MoondreamModel(nn.Module):
         return self._vis_proj(global_features, reconstructed)
 
     def encode_image(self, image: Union[Image.Image, EncodedImage]) -> EncodedImage:
+        """
+        Encode an image for use with the model.
+        
+        This method processes an image through the vision encoder and prefills
+        the text model to prepare for subsequent queries.
+        
+        Args:
+            image: PIL Image or already encoded image
+            
+        Returns:
+            EncodedImage containing position and cached key-value pairs
+        """
         if isinstance(image, EncodedImage):
             return image
         elif not isinstance(image, Image.Image):
@@ -241,6 +287,7 @@ class MoondreamModel(nn.Module):
         )
 
     def _apply_top_p(self, probs: torch.Tensor, top_p: float):
+        """Apply top-p sampling to probability distribution."""
         probs_sort, probs_idx = torch.sort(probs, dim=-1, descending=True)
         probs_sum = torch.cumsum(probs_sort, dim=-1)
         mask = probs_sum - probs_sort > top_p
@@ -253,6 +300,18 @@ class MoondreamModel(nn.Module):
     def _prefill_prompt(
         self, prompt_tokens: torch.Tensor, pos: int, temperature: float, top_p: float
     ):
+        """
+        Prefill the model with prompt tokens and generate the first token.
+        
+        Args:
+            prompt_tokens: Tokenized prompt
+            pos: Current position in the sequence
+            temperature: Sampling temperature
+            top_p: Top-p sampling threshold
+            
+        Returns:
+            Tuple of (logits, hidden_states, next_token, new_position)
+        """
         with torch.inference_mode():
             prompt_emb = text_encoder(prompt_tokens, self.text)
             torch._dynamo.mark_dynamic(prompt_emb, 1)
@@ -278,6 +337,17 @@ class MoondreamModel(nn.Module):
         pos: int,
         settings: Optional[TextSamplingSettings] = None,
     ):
+        """
+        Generate text tokens using the language model.
+        
+        Args:
+            prompt_tokens: Tokenized input prompt
+            pos: Current position in the sequence
+            settings: Optional text sampling settings (temperature, top_p, max_tokens)
+            
+        Returns:
+            Generator yielding text chunks as they are decoded
+        """
         max_tokens = (
             settings.get("max_tokens", DEFAULT_MAX_TOKENS)
             if settings
@@ -366,6 +436,18 @@ class MoondreamModel(nn.Module):
         stream: bool = False,
         settings: Optional[TextSamplingSettings] = None,
     ):
+        """
+        Ask a question about an image.
+        
+        Args:
+            image: PIL Image or encoded image to query
+            question: Text question to ask about the image
+            stream: Whether to stream the response (default: False)
+            settings: Optional text sampling settings
+            
+        Returns:
+            Dictionary with 'answer' key containing response text or generator
+        """
         if self.config.tokenizer.templates["query"] is None:
             raise NotImplementedError("Model does not support querying.")
 
@@ -391,6 +473,12 @@ class MoondreamModel(nn.Module):
             return {"answer": "".join(list(generator()))}
 
     def load_encoded_image(self, encoded_image: EncodedImage):
+        """
+        Load encoded image key-value caches into the model.
+        
+        Args:
+            encoded_image: EncodedImage containing cached key-value pairs
+        """
         for b, (k, v) in zip(self.text.blocks, encoded_image.caches):
             b.kv_cache.k_cache[:, :, : k.size(2), :] = k
             b.kv_cache.v_cache[:, :, : v.size(2), :] = v
@@ -402,6 +490,18 @@ class MoondreamModel(nn.Module):
         stream: bool = False,
         settings: Optional[TextSamplingSettings] = None,
     ):
+        """
+        Generate a caption for an image.
+        
+        Args:
+            image: PIL Image or encoded image to caption
+            length: Caption length preference ("normal", "short", or "long")
+            stream: Whether to stream the response (default: False)
+            settings: Optional text sampling settings
+            
+        Returns:
+            Dictionary with 'caption' key containing caption text or generator
+        """
         if self.config.tokenizer.templates["caption"] is None:
             raise NotImplementedError("Model does not support captioning.")
         if length not in self.config.tokenizer.templates["caption"]:
@@ -431,6 +531,19 @@ class MoondreamModel(nn.Module):
         include_size: bool = True,
         max_objects: int = DEFAULT_MAX_OBJECTS,
     ):
+        """
+        Generate object points or bounding boxes from model hidden states.
+        
+        Args:
+            hidden: Hidden states from the model
+            next_token: Current token being processed
+            pos: Current position in the sequence
+            include_size: Whether to include size information (for bounding boxes)
+            max_objects: Maximum number of objects to detect
+            
+        Returns:
+            List of dictionaries containing object coordinates and optionally sizes
+        """
         out = []
         mask = torch.zeros(1, 1, 2048, device=self.device, dtype=torch.bool)
         mask[:, :, :pos] = 1
@@ -510,6 +623,17 @@ class MoondreamModel(nn.Module):
         object: str,
         settings: Optional[ObjectSamplingSettings] = None,
     ):
+        """
+        Detect objects in an image and return their bounding boxes.
+        
+        Args:
+            image: PIL Image or encoded image to process
+            object: Name of the object type to detect
+            settings: Optional object sampling settings (max_objects)
+            
+        Returns:
+            Dictionary with 'objects' key containing list of bounding box dictionaries
+        """
         if self.config.tokenizer.templates["detect"] is None:
             raise NotImplementedError("Model does not support object detection.")
 
@@ -547,6 +671,17 @@ class MoondreamModel(nn.Module):
         object: str,
         settings: Optional[ObjectSamplingSettings] = None,
     ):
+        """
+        Point to objects in an image and return their center coordinates.
+        
+        Args:
+            image: PIL Image or encoded image to process
+            object: Name of the object type to point to
+            settings: Optional object sampling settings (max_objects)
+            
+        Returns:
+            Dictionary with 'points' key containing list of coordinate dictionaries
+        """
         if self.config.tokenizer.templates["point"] is None:
             raise NotImplementedError("Model does not support pointing.")
 
@@ -584,6 +719,17 @@ class MoondreamModel(nn.Module):
         source: Tuple[float, float],
         force_detect: bool = False,
     ):
+        """
+        Internal method to detect gaze direction from a given point.
+        
+        Args:
+            image: Encoded image to analyze
+            source: Source point coordinates (x, y) as tuple of floats
+            force_detect: Whether to force detection even if model predicts no gaze
+            
+        Returns:
+            Dictionary with gaze coordinates or None if no gaze detected
+        """
         with torch.inference_mode():
             before_emb = text_encoder(
                 torch.tensor(
@@ -638,6 +784,21 @@ class MoondreamModel(nn.Module):
         face: Optional[Dict[str, float]] = None,
         unstable_settings: Dict[str, Any] = {},
     ):
+        """
+        Detect gaze direction from an image.
+        
+        Args:
+            image: PIL Image or encoded image to analyze
+            eye: Eye coordinates (x, y) to detect gaze from (required when prioritize_accuracy=False)
+            face: Face bounding box dict with x_min, y_min, x_max, y_max (required when prioritize_accuracy=True)
+            unstable_settings: Dict with experimental settings:
+                - force_detect: Force detection even if model predicts no gaze
+                - prioritize_accuracy: Use multiple detection attempts for higher accuracy
+                - flip_enc_img: Pre-encoded flipped image for accuracy mode
+                
+        Returns:
+            Dictionary with 'gaze' key containing coordinates dict or None if no gaze detected
+        """
         if "force_detect" in unstable_settings:
             force_detect = unstable_settings["force_detect"]
         else:
@@ -724,7 +885,18 @@ class MoondreamModel(nn.Module):
 
 
 def _is_cjk_char(cp):
-    """Checks whether CP is the codepoint of a CJK character."""
+    """
+    Check whether CP is the codepoint of a CJK character.
+    
+    This defines a "chinese character" as anything in the CJK Unicode block:
+    https://en.wikipedia.org/wiki/CJK_Unified_Ideographs_(Unicode_block)
+    
+    Args:
+        cp: Unicode codepoint integer
+        
+    Returns:
+        bool: True if codepoint represents a CJK character
+    """
     # This defines a "chinese character" as anything in the CJK Unicode block:
     # https://en.wikipedia.org/wiki/CJK_Unified_Ideographs_(Unicode_block)
     if (
