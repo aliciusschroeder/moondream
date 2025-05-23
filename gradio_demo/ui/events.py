@@ -19,19 +19,20 @@ def handle_model_selection_change(selected_model_path: str):
 
     Yields:
         str: Status message updates as generator
+        gr.update: Visibility update for load model button
     """
     if not selected_model_path:
-        yield "⚠️ No model selected. Please choose a model."
+        yield "⚠️ No model selected. Please choose a model.", gr.update()
         return
 
-    yield f"⏳ Loading model: {os.path.basename(selected_model_path)}..."
+    yield f"⏳ Loading model: {os.path.basename(selected_model_path)}...", gr.update(visible=True)
     try:
         load_or_get_cached_model(selected_model_path)
-        yield f"✅ Model '{os.path.basename(selected_model_path)}' loaded successfully."
+        yield f"✅ Model '{os.path.basename(selected_model_path)}' loaded successfully.", gr.update(visible=False)
     except gr.Error as ge:
-        yield f"❌ Error loading model: {str(ge)}"
+        yield f"❌ Error loading model: {str(ge)}", gr.update(visible=True)
     except Exception as e:
-        yield f"❌ Failed to load model '{os.path.basename(selected_model_path)}': An unexpected error occurred: {str(e)}"
+        yield f"❌ Failed to load model '{os.path.basename(selected_model_path)}': An unexpected error occurred: {str(e)}", gr.update(visible=True)
 
 
 def handle_submission_error(
@@ -54,7 +55,7 @@ def handle_submission_error(
     return (
         None,
         "Error",
-        "N/A",
+        error_message,
         error_message,
         image_col_update,
         text_col_update,

@@ -16,7 +16,7 @@ from ..moondream_imports import (
 )
 
 
-def create_gradio_ui(model_files_list, initial_model_status):
+def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logger):
     """
     Create and configure the Gradio UI.
 
@@ -157,6 +157,9 @@ def create_gradio_ui(model_files_list, initial_model_status):
                     info="Select a model file to load",
                 )
                 model_load_status_md = gr.Markdown(initial_model_status)
+                model_load_button = gr.Button(
+                    "Load Model", variant="primary", visible=False if model_loaded else True
+                )
 
             with gr.Accordion(
                 "Text Generation Settings", open=False
@@ -200,14 +203,15 @@ def create_gradio_ui(model_files_list, initial_model_status):
         model_path_dropdown.change(
             fn=handle_model_selection_change,
             inputs=[model_path_dropdown],
-            outputs=[model_load_status_md],
+            outputs=[model_load_status_md, model_load_button],
+        )
+        model_load_button.click(
+            fn=handle_model_selection_change,
+            inputs=[model_path_dropdown],
+            outputs=[model_load_status_md, model_load_button],
         )
 
-        # Track tab changes
-        def update_current_tab():
-            print(f"Current tab: {current_tab.value}")
-            return current_tab.value
-
+        # Update tab state
         query_tab.select(
             lambda: "query_tab",
             inputs=None,

@@ -3,7 +3,7 @@ Entry point. Starts the Gradio app. Handles __main__ block and demo.launch(...).
 """
 
 # Import core modules
-from .core.config import MODEL_DIR, DEBUG_MODE, get_config_dict
+from .core.config import MODEL_DIR, DEBUG_MODE, SKIP_MODEL_LOAD, get_config_dict
 from .core.model_loader import get_model_files_from_directory, initialize_model
 
 # Import utils
@@ -22,7 +22,7 @@ def main():
     log_startup_info(logger, get_config_dict())
 
     # Initialize model
-    model_files_list, initial_model_status = initialize_model(MODEL_DIR)
+    model_files_list, initial_model_status, model_loaded = initialize_model(MODEL_DIR, skip_model_load=SKIP_MODEL_LOAD)
 
     # Log model information
     log_model_info(logger, model_files_list)
@@ -33,7 +33,7 @@ def main():
         )
 
     # Create Gradio interface
-    demo = create_gradio_ui(model_files_list, initial_model_status)
+    demo = create_gradio_ui(model_files_list, initial_model_status, model_loaded, logger)
 
     # Launch the interface
     logger.info("Launching Gradio interface...")

@@ -100,7 +100,7 @@ def load_or_get_cached_model(selected_model_path: str):
         raise gr.Error(error_message)
 
 
-def initialize_model(model_dir: str):
+def initialize_model(model_dir: str, skip_model_load: bool = False):
     """
     Initialize the model at startup by loading the first available model file.
 
@@ -110,11 +110,20 @@ def initialize_model(model_dir: str):
     Returns:
         tuple: (list of model files, status message)
     """
+    model_loaded = False
     model_files_list = get_model_files_from_directory(model_dir)
 
     initial_model_load_status_message = "No models found or directory empty."
     if not model_files_list:
         return model_files_list, initial_model_load_status_message
+    else:
+        initial_model_load_status_message = f"{len(model_files_list)} model available"
+        print(
+            f"Found {len(model_files_list)} model files in '{model_dir}'."
+        )
+
+    if skip_model_load:
+        return model_files_list, initial_model_load_status_message, model_loaded
 
     selected_initial_model = model_files_list[0]
     initial_model_load_status_message = f"Attempting to load initial model: {os.path.basename(selected_initial_model)}..."
@@ -128,6 +137,7 @@ def initialize_model(model_dir: str):
                 f"✅ Initial model '{os.path.basename(selected_initial_model)}' loaded."
             )
             print(initial_model_load_status_message)
+            model_loaded = True
         else:
             initial_model_load_status_message = "❌ Moondream components not fully available for initial load. Check imports and library installation."
             print(
@@ -137,4 +147,4 @@ def initialize_model(model_dir: str):
         initial_model_load_status_message = f"❌ Error loading initial model '{os.path.basename(selected_initial_model)}': {e}"
         print(f"ERROR during initial model load: {e}")
 
-    return model_files_list, initial_model_load_status_message
+    return model_files_list, initial_model_load_status_message, model_loaded

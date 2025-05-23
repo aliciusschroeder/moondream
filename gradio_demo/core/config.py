@@ -27,6 +27,7 @@ SECONDARY_HUE = "sky"
 # Debug mode
 DEBUG_MODE = True
 
+SKIP_MODEL_LOAD = True
 
 # Function to get all constants as a dict (useful for debugging/logging)
 def get_config_dict():
