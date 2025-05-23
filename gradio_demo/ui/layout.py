@@ -4,8 +4,11 @@ Defines the full Gradio UI layout and returns the interface demo.
 
 import gradio as gr
 
-from .events_suggestions import question_suggestions_event, handle_suggestion_click
-from .events_tasks import process_caption_submission, process_query_submission
+from .events_suggestions import (
+    object_suggestions_event,
+    question_suggestions_event,
+    handle_suggestion_click,
+)
 from ..utils.ui_utils import create_model_choices
 from ..core.config import APP_TITLE, APP_DESCRIPTION, PRIMARY_HUE, SECONDARY_HUE
 from ..moondream_imports import (
@@ -61,13 +64,13 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                         )
 
                         # Add suggestion buttons row
-                        with gr.Row() as suggestion_row:
-                            suggestion_status = gr.Markdown(
+                        with gr.Row() as query_suggestion_status_row:
+                            query_suggestion_status = gr.Markdown(
                                 "*Upload an image to get question suggestions*",
                                 visible=True,
                             )
 
-                        with gr.Row() as question_buttons_row:
+                        with gr.Row() as query_button_row:
                             query_suggestion_btn1 = gr.Button(
                                 "Suggestion 1", variant="secondary", visible=False
                             )
@@ -104,6 +107,21 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                         object_textbox_point = gr.Textbox(
                             label="Object to Point At", placeholder="e.g., the red car"
                         )
+                        with gr.Row() as point_suggestion_status_row:
+                            point_suggestion_status = gr.Markdown(
+                                "*Upload an image to get point suggestions*",
+                                visible=True,
+                            )
+                        with gr.Row() as points_buttons_row:
+                            point_suggestion_btn1 = gr.Button(
+                                "Suggestion 1", variant="secondary", visible=False
+                            )
+                            point_suggestion_btn2 = gr.Button(
+                                "Suggestion 2", variant="secondary", visible=False
+                            )
+                            point_suggestion_btn3 = gr.Button(
+                                "Suggestion 3", variant="secondary", visible=False
+                            )
                         submit_button_point = gr.Button("SUBMIT", variant="primary")
                         gr.Markdown("*Point functionality is under development.*")
 
@@ -114,6 +132,21 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                         object_textbox_detect = gr.Textbox(
                             label="Object to Detect", placeholder="e.g., cat, table"
                         )
+                        with gr.Row() as detect_suggestion_status_row:
+                            detect_suggestion_status = gr.Markdown(
+                                "*Upload an image to get detect suggestions*",
+                                visible=True,
+                            )
+                        with gr.Row() as detect_buttons_row:
+                            detect_suggestion_btn1 = gr.Button(
+                                "Suggestion 1", variant="secondary", visible=False
+                            )
+                            detect_suggestion_btn2 = gr.Button(
+                                "Suggestion 2", variant="secondary", visible=False
+                            )
+                            detect_suggestion_btn3 = gr.Button(
+                                "Suggestion 3", variant="secondary", visible=False
+                            )
                         submit_button_detect = gr.Button("SUBMIT", variant="primary")
                         gr.Markdown("*Detect functionality is under development.*")
 
@@ -246,12 +279,43 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                 query_suggestion_btn1,
                 query_suggestion_btn2,
                 query_suggestion_btn3,
-                question_textbox_query,
+                last_processed_image,
+            ],
+        ).then(
+            fn=object_suggestions_event,
+            inputs=[
+                model_path_dropdown,
+                main_image_uploader,
+                last_processed_image,
+                current_tab,
+                point_tab_id,
+            ],
+            outputs=[
+                point_suggestion_status,
+                point_suggestion_btn1,
+                point_suggestion_btn2,
+                point_suggestion_btn3,
+                last_processed_image,
+            ],
+        ).then(
+            fn=object_suggestions_event,
+            inputs=[
+                model_path_dropdown,
+                main_image_uploader,
+                last_processed_image,
+                current_tab,
+                detect_tab_id,
+            ],
+            outputs=[
+                detect_suggestion_status,
+                detect_suggestion_btn1,
+                detect_suggestion_btn2,
+                detect_suggestion_btn3,
                 last_processed_image,
             ],
         )
 
-        # Generate suggestions when image is uploaded and query tab is active
+        # Suggestion Trigger on Image Upload
         main_image_uploader.change(
             fn=question_suggestions_event,
             inputs=[
@@ -265,7 +329,38 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
                 query_suggestion_btn1,
                 query_suggestion_btn2,
                 query_suggestion_btn3,
-                question_textbox_query,
+                last_processed_image,
+            ],
+        ).then(
+            fn=object_suggestions_event,
+            inputs=[
+                model_path_dropdown,
+                main_image_uploader,
+                last_processed_image,
+                current_tab,
+                point_tab_id,
+            ],
+            outputs=[
+                point_suggestion_status,
+                point_suggestion_btn1,
+                point_suggestion_btn2,
+                point_suggestion_btn3,
+                last_processed_image,
+            ],
+        ).then(
+            fn=object_suggestions_event,
+            inputs=[
+                model_path_dropdown,
+                main_image_uploader,
+                last_processed_image,
+                current_tab,
+                detect_tab_id,
+            ],
+            outputs=[
+                detect_suggestion_status,
+                detect_suggestion_btn1,
+                detect_suggestion_btn2,
+                detect_suggestion_btn3,
                 last_processed_image,
             ],
         )
@@ -289,6 +384,43 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
             outputs=[question_textbox_query],
         )
 
+        # Make suggestion buttons update the point input when clicked
+        point_suggestion_btn1.click(
+            fn=handle_suggestion_click,
+            inputs=[point_suggestion_btn1],
+            outputs=[object_textbox_point],
+        )
+        point_suggestion_btn2.click(
+            fn=handle_suggestion_click,
+            inputs=[point_suggestion_btn2],
+            outputs=[object_textbox_point],
+        )
+        point_suggestion_btn3.click(
+            fn=handle_suggestion_click,
+            inputs=[point_suggestion_btn3],
+            outputs=[object_textbox_point],
+        )
+
+        # Make suggestion buttons update the detect input when clicked
+        detect_suggestion_btn1.click(
+            fn=handle_suggestion_click,
+            inputs=[detect_suggestion_btn1],
+            outputs=[object_textbox_detect],
+        )
+        detect_suggestion_btn2.click(
+            fn=handle_suggestion_click,
+            inputs=[detect_suggestion_btn2],
+            outputs=[object_textbox_detect],
+        )
+        detect_suggestion_btn3.click(
+            fn=handle_suggestion_click,
+            inputs=[detect_suggestion_btn3],
+            outputs=[object_textbox_detect],
+        )
+
+
+        # Submission Handlers
+        # Query task handler
         submit_button_query.click(
             fn=process_query_submission,
             inputs=[
@@ -333,9 +465,7 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
 
         # Point task handler
         submit_button_point.click(
-            fn=lambda model, img, obj_text, mo: placeholder_task_handler(
-                model, img, obj_text, "Point", {"max_objects": mo}
-            ),
+            fn=process_point_submission,
             inputs=[
                 model_path_dropdown,
                 main_image_uploader,
@@ -354,9 +484,7 @@ def create_gradio_ui(model_files_list, initial_model_status, model_loaded, logge
 
         # Detect task handler
         submit_button_detect.click(
-            fn=lambda model, img, obj_text, mo: placeholder_task_handler(
-                model, img, obj_text, "Detect", {"max_objects": mo}
-            ),
+            fn=process_detect_submission,
             inputs=[
                 model_path_dropdown,
                 main_image_uploader,
