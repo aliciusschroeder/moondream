@@ -10,7 +10,10 @@ from moondream.torch.image_crops import select_tiling
 CROP_SIZE = 378
 DEFAULT_MAX_TILES = 12
 
-def split_image_into_tiles(image: Image.Image, max_tiles: int = DEFAULT_MAX_TILES) -> list[Image.Image]:
+
+def split_image_into_tiles(
+    image: Image.Image, max_tiles: int = DEFAULT_MAX_TILES
+) -> list[Image.Image]:
     h_tiles, w_tiles = select_tiling(image.height, image.width, CROP_SIZE, max_tiles)
     print(f"Splitting image into {w_tiles}x{h_tiles} (WxH) tiles.")
 
@@ -109,7 +112,13 @@ def detect_all_objects(
             try:
                 content = json.loads(answer)
                 if isinstance(content, list):
-                    objects.extend([item.strip().lower() for item in content if isinstance(item, str)])
+                    objects.extend(
+                        [
+                            item.strip().lower()
+                            for item in content
+                            if isinstance(item, str)
+                        ]
+                    )
                 else:
                     print("Answer was parsed but not a list:", answer)
                 continue

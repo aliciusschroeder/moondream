@@ -91,10 +91,11 @@ def check_submission(
 
     return None
 
+
 def handle_detectall_max_tiles_change(
-        image: Image.Image,
-        in_depth: bool,
-        max_tiles: int,
+    image: Image.Image,
+    in_depth: bool,
+    max_tiles: int,
 ):
     if image is None:
         return gr.update()
@@ -104,7 +105,7 @@ def handle_detectall_max_tiles_change(
         tiling = select_tiling(
             image.height,
             image.width,
-            378, # TODO: Define this constant in a config file
+            378,  # TODO: Define this constant in a config file
             max_tiles,
         )
         actual_tiles = tiling[0] * tiling[1]
